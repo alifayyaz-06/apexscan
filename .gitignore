@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/
+.temp/
+tmp/
+
+# Coverage
+coverage/
+
+# Supabase local
+.supabase/
+
+# Claude
+.claude/
+
+# Databases
+*.db
+*.sqlite
+
+node_modules/
+backend/node_modules/
+
+.env
+backend/.env
+
+dist/
+build/
+
+.vscode/

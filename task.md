@@ -1,0 +1,42 @@
+# Task List - Smart QR Code Ordering System
+
+- [x] Implement active restaurant check on forgot password in `authController.js`
+- [x] Add direct login form and forgot password link in `LandingView.jsx`
+- [x] Restrict staff login pages based on `source=launchpad` in `LoginView.jsx`
+- [x] Configure quick launch redirects in `AdminView.jsx`
+- [x] Run SQL migration to add settings columns to `restaurants` table in database
+- [x] Create public settings endpoint `/api/v1/restaurants/public/:slug` in backend
+- [x] Create authenticated settings endpoints in backend
+- [x] Update `Order.js` model to retrieve tax & service charge dynamically
+- [x] Add restaurant name & logo branding to views:
+  - [x] Customer Menu Navbar (`CustomerView.jsx`)
+  - [x] Staff Login View (`LoginView.jsx`)
+  - [x] Waiter Terminal & print receipts (`WaiterView.jsx`)
+  - [x] Redesign Kitchen KDS View (`KitchenView.jsx`) to black and white minimalist style
+  - [x] Remove emojis (stopwatch, cooking, etc.)
+  - [x] Convert background to white, text to black, borders to solid lines
+  - [x] Convert buttons to high-contrast black/white buttons
+  - [x] Replace pastel badges with monospace uppercase tags
+- [x] Redesign Waiter/Sales View (`WaiterView.jsx`) to black and white minimalist style
+  - [x] Overhaul active tab navigator to solid monochrome outlines
+  - [x] Replace grid cards with sharp black borders and no drop shadows
+  - [x] Remove icons and emojis where possible
+  - [x] Style buttons, modals, and thermal receipt printouts as pure black and white
+- [x] Add Settings tab in Admin Dashboard (`AdminView.jsx`)
+- [x] Verify financial calculations and receipt details
+- [x] Setup Express Routing & WebSocket server
+  - [x] `src/routes/api.js`
+  - [x] `server.js` (HTTP + WebSocket orchestration)
+- [x] Partition Codebase into Separate `backend/` and `frontend/` Directories
+- [x] Enable CORS on API routes and adjust WebSockets to support cross-port messaging
+- [x] Convert Entire Frontend to a Vite React Application with Tailwind CSS
+- [x] Verify compilation and test local changes
+- [x] Optimize Mobile UX layout
+- [x] Refine Aesthetics (60-30-10 Rule & Soft Shadows)
+- [x] Implement Gourmet Color Palette & Contrast Specs
+- [x] Integrate Calligraphy Brand Typography
+- [x] Build Atmospheric Motive Landing Screen
+- [x] Resolve Served Status Mutation Bug
+  - [x] Identify validation omission of `'served'` inside backend status controller `validStatuses` array
+  - [x] Append `'served'` to `validStatuses` inside `backend/src/controllers/orderController.js`
+  - [x] Restart backend server on port 3005 and test transition pipeline

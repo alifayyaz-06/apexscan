@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  --font-playwrite: 'Playwrite NZ', cursive;
+  --animate-fade-in: fadeIn 0.5s ease-out forwards;
+  --animate-pop-in: popIn 0.22s ease-out forwards;
+  
+  /* Gourmet Palette */
+  --color-primary: #E63946;        /* Warm Red appetite color */
+  --color-primary-hover: #FF6B35;  /* Vibrant Orange appetite hover */
+  --color-charcoal: #2B2D42;       /* Deep Charcoal typography */
+  --color-bg-page: #F9F9F9;        /* Soft clean off-white background */
+}
+
+/* Keyframes definition */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes zoomBg {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #F9F9F9;
+  color: #2B2D42;
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Calligraphy font helper helper */
+.font-playwrite {
+  font-family: 'Playwrite NZ', cursive !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(43, 45, 66, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(43, 45, 66, 0.3);
+}
+
+/* Pulse indicator for live tracking */
+.pulse-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E63946;
+  box-shadow: 0 0 8px rgba(230, 57, 70, 0.7);
+  animation: pulse 1.5s infinite;
+}
+
+/* Printer style overrides for thermal tickets */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt-details, #receipt-details * {
+    visibility: visible;
+  }
+  #receipt-details {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+}
