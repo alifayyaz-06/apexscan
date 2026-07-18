@@ -33,6 +33,10 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Health check routes for UptimeRobot (bypasses global rate limiter for clean, lightweight pings)
+app.get('/health', (req, res) => res.status(200).json({ status: 'OK' }));
+app.get('/api/v1/health', (req, res) => res.status(200).json({ status: 'OK' }));
+
 // Global rate limiting
 app.use(globalLimiter);
 
