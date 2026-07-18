@@ -1,38 +1,64 @@
-const dotenv = require('dotenv');
-const path = require('path');
+const dotenv = require("dotenv");
+const path = require("path");
 
-// Load env configuration
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Load .env
+dotenv.config({
+  path: path.join(__dirname, "../../.env"),
+});
 
 const config = {
+  // Supabase
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_KEY,
-  port: parseInt(process.env.PORT || '3005', 10),
-  superAdminEmail: process.env.SUPER_ADMIN_EMAIL,
-  jwtSecret: process.env.JWT_SECRET,
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || (process.env.JWT_SECRET + '_refresh'),
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3006',
-  nodeEnv: process.env.NODE_ENV || 'development',
-  smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
-  smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
-  smtpUser: process.env.SMTP_USER,
-  smtpPass: process.env.SMTP_PASS,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  disableRateLimit: process.env.DISABLE_RATE_LIMIT === 'true',
-  resendApiKey: process.env.RESEND_API_KEY
+
+  // Server
+  port: parseInt(process.env.PORT || "3005", 10),
+  nodeEnv: process.env.NODE_ENV || "development",
+
+  // Frontend (Vercel)
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3006",
+
+  // Admin
+  superAdminEmail: process.env.SUPER_ADMIN_EMAIL,
+
+  // JWT
+  jwtSecret: process.env.JWT_SECRET,
+
+  jwtRefreshSecret:
+    process.env.JWT_REFRESH_SECRET || `${process.env.JWT_SECRET}_refresh`,
+
+  // Brevo Email API
+  brevoApiKey: process.env.BREVO_API_KEY,
+
+  brevoSenderEmail: process.env.BREVO_SENDER_EMAIL,
+
+  brevoSenderName: process.env.BREVO_SENDER_NAME || "Smart QR Ordering System",
+
+  // Rate limit
+  disableRateLimit: process.env.DISABLE_RATE_LIMIT === "true",
 };
 
-// Validation
-const required = ['supabaseUrl', 'supabaseKey', 'superAdminEmail', 'jwtSecret', 'supabaseServiceRoleKey'];
+// Required environment variables
+const required = [
+  "SUPABASE_URL",
+  "SUPABASE_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPER_ADMIN_EMAIL",
+  "JWT_SECRET",
+];
+
 for (const key of required) {
-  if (!config[key]) {
-    throw new Error(`CRITICAL CONFIGURATION ERROR: Environment variable "${key.replace(/([A-Z])/g, '_$1').toUpperCase()}" is missing.`);
+  if (!process.env[key]) {
+    throw new Error(`CRITICAL CONFIGURATION ERROR: ${key} is missing`);
   }
 }
 
-// Ensure either SMTP or Resend credentials are provided
-if (!config.resendApiKey && (!config.smtpUser || !config.smtpPass)) {
-  throw new Error(`CRITICAL CONFIGURATION ERROR: You must provide either "RESEND_API_KEY" or both "SMTP_USER" and "SMTP_PASS" environment variables.`);
+// Brevo validation
+if (!config.brevoApiKey || !config.brevoSenderEmail) {
+  throw new Error(
+    "CRITICAL CONFIGURATION ERROR: BREVO_API_KEY and BREVO_SENDER_EMAIL are required",
+  );
 }
 
 module.exports = config;

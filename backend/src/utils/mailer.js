@@ -1,47 +1,35 @@
-const nodemailer = require("nodemailer");
+const brevo = require("@getbrevo/brevo");
 const envs = require("../config/envs");
 
-const transporter = nodemailer.createTransport({
-  host: envs.smtpHost || "smtp.gmail.com",
-  port: Number(envs.smtpPort) || 465,
-  secure: Number(envs.smtpPort) === 465,
-  family: 4,
-  auth: {
-    user: envs.smtpUser,
-    pass: envs.smtpPass,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-  tls: {
-    rejectUnauthorized: true,
-  },
-});
+const apiInstance = new brevo.TransactionalEmailsApi();
 
-// Verify SMTP connection on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("========================================");
-    console.error("[Mailer] SMTP Verification Failed");
-    console.error(error);
-    console.error("========================================");
-  } else {
-    console.log("========================================");
-    console.log("[Mailer] Gmail SMTP Connected Successfully");
-    console.log("========================================");
-  }
-});
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  envs.brevoApiKey,
+);
 
 async function sendOtp(to, otp) {
   try {
     console.log(`[Mailer] Sending OTP to ${to}`);
 
-    const info = await transporter.sendMail({
-      from: `"Smart Ordering" <${envs.smtpUser}>`,
-      to,
-      subject: "Your Password Reset Code",
-      html: `
+    const email = new brevo.SendSmtpEmail();
+
+    email.sender = {
+      email: envs.brevoSenderEmail,
+      name: "Smart QR Ordering System",
+    };
+
+    email.to = [
+      {
+        email: to,
+      },
+    ];
+
+    email.subject = "Your Password Reset Code";
+
+    email.htmlContent = `
       <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;padding:20px">
+
           <h2>Password Reset</h2>
 
           <p>
@@ -71,20 +59,22 @@ async function sendOtp(to, otp) {
           <hr>
 
           <small>Smart QR Ordering System</small>
+
       </div>
-      `,
-    });
+    `;
+
+    const response = await apiInstance.sendTransacEmail(email);
 
     console.log("========================================");
     console.log("[Mailer] Email Sent Successfully");
-    console.log(info);
+    console.log(response);
     console.log("========================================");
 
     return true;
   } catch (err) {
     console.error("========================================");
     console.error("[Mailer] Email Sending Failed");
-    console.error(err);
+    console.error(err.response?.body || err);
     console.error("========================================");
 
     throw err;
