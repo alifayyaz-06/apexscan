@@ -16,8 +16,7 @@ const wss = new WebSocket.Server({ server });
 // Run DB check & migrations on startup
 dbInit();
 
-const PORT = envs.port;
-
+const PORT = process.env.PORT || envs.port;
 // Security headers
 app.use(helmet());
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3005';
+import { API_URL } from '../utils/config';
 
 export default function ForgotPasswordView() {
   const searchParams = new URLSearchParams(window.location.search);
