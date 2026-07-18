@@ -2,9 +2,10 @@ const nodemailer = require("nodemailer");
 const envs = require("../config/envs");
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  host: envs.smtpHost || "smtp.gmail.com",
+  port: Number(envs.smtpPort) || 465,
+  secure: Number(envs.smtpPort) === 465,
+  family: 4,
   auth: {
     user: envs.smtpUser,
     pass: envs.smtpPass,
@@ -12,54 +13,84 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
+  tls: {
+    rejectUnauthorized: true,
+  },
+});
+
+// Verify SMTP connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("========================================");
+    console.error("[Mailer] SMTP Verification Failed");
+    console.error(error);
+    console.error("========================================");
+  } else {
+    console.log("========================================");
+    console.log("[Mailer] Gmail SMTP Connected Successfully");
+    console.log("========================================");
+  }
 });
 
 async function sendOtp(to, otp) {
   try {
     console.log(`[Mailer] Sending OTP to ${to}`);
 
-    await transporter.sendMail({
-      from: `"Apex Scan" <${envs.smtpUser}>`,
+    const info = await transporter.sendMail({
+      from: `"Smart Ordering" <${envs.smtpUser}>`,
       to,
       subject: "Your Password Reset Code",
       html: `
-        <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 24px;">
-          <h2 style="color: #2B2D42; margin-bottom: 8px;">Password Reset</h2>
+      <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;padding:20px">
+          <h2>Password Reset</h2>
 
-          <p style="color: #555; font-size: 14px;">
-            Use the code below to reset your password.
-            It expires in 10 minutes.
+          <p>
+              Use the verification code below to reset your password.
+              This code will expire in 10 minutes.
           </p>
 
           <div style="
-              background:#f4f4f4;
-              border-radius:8px;
+              background:#f5f5f5;
               padding:20px;
               text-align:center;
-              margin:24px 0;
+              border-radius:8px;
+              margin:25px 0;
           ">
-            <span style="
-                font-size:32px;
-                font-weight:bold;
-                letter-spacing:6px;
-                color:#E63946;
-            ">
-              ${otp}
-            </span>
+              <span style="
+                  font-size:34px;
+                  letter-spacing:8px;
+                  font-weight:bold;
+                  color:#E63946;
+              ">
+                  ${otp}
+              </span>
           </div>
 
-          <p style="color:#888;font-size:12px;">
-            If you didn't request this email, simply ignore it.
-          </p>
-        </div>
+          <p>If you didn't request this email, simply ignore it.</p>
+
+          <hr>
+
+          <small>Smart QR Ordering System</small>
+      </div>
       `,
     });
 
-    console.log("[Mailer] Email sent successfully.");
+    console.log("========================================");
+    console.log("[Mailer] Email Sent Successfully");
+    console.log(info);
+    console.log("========================================");
+
+    return true;
   } catch (err) {
-    console.error("[Mailer] Failed to send email:", err);
+    console.error("========================================");
+    console.error("[Mailer] Email Sending Failed");
+    console.error(err);
+    console.error("========================================");
+
     throw err;
   }
 }
 
-module.exports = { sendOtp };
+module.exports = {
+  sendOtp,
+};
