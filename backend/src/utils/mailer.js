@@ -88,6 +88,9 @@ async function sendOtp(to, otp) {
      console.log("[Brevo Key Exists]", envs.brevoApiKey ? "YES" : "NO");
 
      console.log("[Brevo Key Start]", envs.brevoApiKey?.substring(0, 10));
+     console.log("Brevo key loaded:", !!envs.brevoApiKey);
+     console.log("Brevo key prefix:", envs.brevoApiKey?.substring(0, 15));
+     console.log("Brevo key length:", envs.brevoApiKey?.length);
 
     throw err;
 
