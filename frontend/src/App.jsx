@@ -41,9 +41,13 @@ function AppContent() {
   // 1. Initial restoring session state loader
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9F9F9] flex items-center justify-center">
-        <div className="text-slate-400 text-sm font-medium animate-pulse">
-          Restoring Gourmet Bistro session...
+      <div className="min-h-screen bg-[#F9F9F9] flex flex-col items-center justify-center gap-4">
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 rounded-full border-4 border-slate-200/60"></div>
+          <div className="absolute inset-0 rounded-full border-4 border-t-[#E63946] animate-spin"></div>
+        </div>
+        <div className="text-slate-500 text-sm font-medium animate-pulse">
+          Restoring session...
         </div>
       </div>
     );
