@@ -85,9 +85,14 @@ async function sendOtp(to, otp) {
     console.error("[Mailer] Email Sending Failed");
     console.error(err);
     console.error("========================================");
+     console.log("[Brevo Key Exists]", envs.brevoApiKey ? "YES" : "NO");
+
+     console.log("[Brevo Key Start]", envs.brevoApiKey?.substring(0, 10));
 
     throw err;
+
   }
+ 
 }
 
 module.exports = {
