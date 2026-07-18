@@ -11,6 +11,15 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Verify SMTP connection on startup to log errors clearly in Render logs
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('[Mailer] SMTP verification failed:', error.message);
+  } else {
+    console.log('[Mailer] SMTP server connection successful and ready to send emails.');
+  }
+});
+
 async function sendOtp(to, otp) {
   console.log(`[Mailer] Sending OTP to ${to}, code: ${otp}`);
   await transporter.sendMail({
