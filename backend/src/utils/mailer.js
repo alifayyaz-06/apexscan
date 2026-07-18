@@ -2,22 +2,16 @@ const nodemailer = require("nodemailer");
 const envs = require("../config/envs");
 
 const transporter = nodemailer.createTransport({
-  host: envs.smtpHost || "smtp.gmail.com",
-  port: Number(envs.smtpPort) || 465,
-  secure: Number(envs.smtpPort) === 465,
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: envs.smtpUser,
     pass: envs.smtpPass,
   },
-});
-
-// Verify SMTP connection on startup
-transporter.verify((error) => {
-  if (error) {
-    console.error("[Mailer] Gmail SMTP verification failed:", error);
-  } else {
-    console.log("[Mailer] Gmail SMTP connected successfully.");
-  }
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 async function sendOtp(to, otp) {
