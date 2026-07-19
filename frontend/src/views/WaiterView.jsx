@@ -767,17 +767,17 @@ export default function WaiterView() {
   const getOrderBadges = (order) => {
     const badges = [];
     if (order.order_source === 'manual') {
-      badges.push({ label: 'Manual Order', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' });
+      badges.push({ label: 'Manual Order', className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold uppercase tracking-wider text-[0.6rem]' });
     } else {
-      badges.push({ label: 'QR Order', className: 'bg-blue-50 text-blue-700 border-blue-200' });
+      badges.push({ label: 'QR Order', className: 'bg-blue-50 text-blue-700 border-blue-200 font-bold uppercase tracking-wider text-[0.6rem]' });
     }
 
     if (order.order_type === 'delivery') {
-      badges.push({ label: 'Delivery', className: 'bg-orange-50 text-orange-700 border-orange-200' });
+      badges.push({ label: 'Delivery', className: 'bg-orange-100 text-orange-800 border-orange-300 font-black uppercase tracking-wider text-[0.7rem] px-2 py-0.5 border-2 shadow-sm' });
     } else if (order.order_type === 'takeaway') {
-      badges.push({ label: 'Take Away', className: 'bg-purple-50 text-purple-700 border-purple-200' });
+      badges.push({ label: 'Take Away', className: 'bg-purple-100 text-purple-800 border-purple-300 font-black uppercase tracking-wider text-[0.7rem] px-2 py-0.5 border-2 shadow-sm' });
     } else {
-      badges.push({ label: 'Dine In', className: 'bg-zinc-50 text-zinc-700 border-zinc-200' });
+      badges.push({ label: 'Dine In', className: 'bg-zinc-100 text-zinc-800 border-zinc-300 font-black uppercase tracking-wider text-[0.7rem] px-2 py-0.5 border-2 shadow-sm' });
     }
     return badges;
   };
@@ -1450,30 +1450,7 @@ export default function WaiterView() {
           </div>
         </header>
 
-        {/* Order Source Filter */}
-        <div className="flex flex-wrap items-center gap-2 mb-6 print:hidden">
-          {[
-            { key: 'all', label: 'All Orders', icon: null },
-            { key: 'qr', label: 'QR Orders', icon: QrCode },
-            { key: 'manual', label: 'Manual', icon: Hand },
-            { key: 'dine_in', label: 'Dine In', icon: UtensilsCrossed },
-            { key: 'takeaway', label: 'Take Away', icon: ShoppingBag },
-            { key: 'delivery', label: 'Delivery', icon: Truck },
-          ].map(f => (
-            <button
-              key={f.key}
-              onClick={() => setOrderFilter(f.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
-                orderFilter === f.key
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
-              }`}
-            >
-              {f.icon && <f.icon size={12} />}
-              {f.label}
-            </button>
-          ))}
-        </div>
+
 
         {/* Tab 1: Live Orders */}
         {activeTab === 'live' && (

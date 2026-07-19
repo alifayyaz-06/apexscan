@@ -49,7 +49,18 @@ export function KitchenCard({ order, onStatusChange }) {
       <div>
         <div className="flex justify-between items-center border-b border-zinc-100 pb-3 mb-4 text-black">
           <div className="flex flex-col">
-            <span className="font-bold text-base text-zinc-950">Table {order.table_name || order.table}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-base text-zinc-950">Table {order.table_name || order.table}</span>
+              <span className={`text-[0.65rem] px-2 py-0.5 font-black uppercase tracking-wider border-2 rounded-lg shadow-sm ${
+                order.order_type === 'delivery' 
+                  ? 'bg-orange-100 text-orange-800 border-orange-300' 
+                  : order.order_type === 'takeaway' 
+                    ? 'bg-purple-100 text-purple-800 border-purple-300' 
+                    : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+              }`}>
+                {order.order_type === 'delivery' ? 'Delivery' : order.order_type === 'takeaway' ? 'Take Away' : 'Dine In'}
+              </span>
+            </div>
             <span className="text-xs font-mono text-zinc-400">#{order.order_number || order.id.slice(0, 8)}</span>
           </div>
           <div className="text-right">
