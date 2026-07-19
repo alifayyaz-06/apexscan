@@ -106,11 +106,12 @@ export default function CustomerView() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showDemoTableOverlay, setShowDemoTableOverlay] = useState(false);
   const [selectedDemoTable, setSelectedDemoTable] = useState("1");
+  // Shown after seller settles the bill
+  const [showPaidScreen, setShowPaidScreen] = useState(false);
 
   // Detect table and load initial orders/menu
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    let table = urlParams.get("table");
 
     // Parse dynamic restaurant slug from path prefix (e.g. /r/kfc/customer)
     const pathMatch = window.location.pathname.match(/^\/r\/([^/]+)/);
@@ -118,9 +119,18 @@ export default function CustomerView() {
 
     let restId = pathSlug || urlParams.get("restaurant");
 
-    if (!table) {
-      table = localStorage.getItem("ordering_table");
+    // ── TABLE TAMPER-PROOF ──────────────────────────────────────────────────
+    // Once a table is locked via a QR scan, localStorage is the single source
+    // of truth. A manual URL edit cannot override an already-locked table.
+    const lockedTable = localStorage.getItem("ordering_table");
+    const urlTable = urlParams.get("table");
+    const table = lockedTable || urlTable; // localStorage wins if set
+    if (!lockedTable && urlTable) {
+      // Fresh QR scan — lock the table for this session
+      localStorage.setItem("ordering_table", urlTable);
     }
+    // ────────────────────────────────────────────────────────────────────────
+
     if (!restId) {
       restId = localStorage.getItem("ordering_restaurant");
     }
@@ -132,12 +142,13 @@ export default function CustomerView() {
 
     if (table) {
       setCurrentTable(table);
-      localStorage.setItem("ordering_table", table);
       // Fetch order details for session tracking
       const savedOrderId = localStorage.getItem(`active_order_table_${table}`);
       if (savedOrderId) {
         setActiveOrderId(savedOrderId);
-        fetchOrderDetails(savedOrderId);
+        // Bypass welcome screen immediately — customer has an active order
+        setLandingExplored(true);
+        fetchOrderDetails(savedOrderId, restId);
       }
     } else {
       setShowDemoTableOverlay(true);
@@ -166,15 +177,30 @@ export default function CustomerView() {
         if (activeOrder && activeOrder.status !== updatedOrder.status) {
           playAudioAlert();
         }
-        // If order was cancelled or completed, clean active order local states
-        if (
-          updatedOrder.status === "completed" ||
-          updatedOrder.status === "cancelled"
-        ) {
+        // ── PAYMENT COMPLETE ─────────────────────────────────────────────────
+        if (updatedOrder.status === "completed") {
+          // Show the thank-you screen to the customer
+          setShowPaidScreen(true);
+          // After 5 seconds, wipe ALL session data and return to welcome screen
+          setTimeout(() => {
+            const tbl = localStorage.getItem("ordering_table");
+            if (tbl) localStorage.removeItem(`active_order_table_${tbl}`);
+            localStorage.removeItem("ordering_table");
+            localStorage.removeItem("ordering_restaurant");
+            setActiveOrderId(null);
+            setActiveOrder(null);
+            setShowPaidScreen(false);
+            setCart({});
+            // Hard reload to welcome screen — clears all state cleanly
+            window.location.href = window.location.pathname;
+          }, 5000);
+        } else if (updatedOrder.status === "cancelled") {
+          // Cancelled: clear order state but keep customer on the menu
           localStorage.removeItem(`active_order_table_${currentTable}`);
           setActiveOrderId(null);
           setActiveOrder(null);
         }
+        // ─────────────────────────────────────────────────────────────────────
       }
     });
 
@@ -786,7 +812,7 @@ export default function CustomerView() {
 
       {/* Stepper Status Tracking Modal Overlay */}
       {activeOrder && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-5">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5" style={SANS}>
           <div
             className="bg-white text-[#171512] w-full max-w-[480px] border p-6 rounded-2xl max-h-[90vh] overflow-y-auto"
             style={{ borderColor: LINE }}
@@ -802,7 +828,7 @@ export default function CustomerView() {
                 className="border font-mono text-[10px] font-semibold px-3 py-1 rounded-lg"
                 style={{ borderColor: LINE, color: MUTED }}
               >
-                ID: {activeOrder.id.slice(0, 8)}
+                Table {currentTable}
               </span>
             </div>
 
@@ -930,23 +956,96 @@ export default function CustomerView() {
               </div>
             </div>
 
-            <div className="text-center space-y-3">
-              <p
-                className="text-[11px] leading-relaxed"
-                style={{ color: MUTED }}
-              >
-                You can browse the menu or add more items. We'll update this
-                page when your order status changes.
+            {/* Locked notice — no going back while order is active */}
+            <div
+              className="flex items-center gap-2 rounded-xl px-4 py-3"
+              style={{ backgroundColor: "#FFF8F0", border: `1px solid #F5DFC5` }}
+            >
+              <span style={{ fontSize: 16 }}>🔒</span>
+              <p className="text-[11px] leading-relaxed" style={{ color: "#9A6020" }}>
+                Your order is being prepared. This screen will update automatically.
+                Payment will clear your session when the bill is settled.
               </p>
-              <button
-                onClick={() => setActiveOrder(null)} // hide overlay locally
-                className="w-full py-3 border font-semibold rounded-full transition-colors cursor-pointer text-[#171512]"
-                style={{ borderColor: LINE }}
-              >
-                Back to Menu
-              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── PAYMENT COMPLETE OVERLAY ──────────────────────────────────────── */}
+      {showPaidScreen && (
+        <div
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-8"
+          style={{
+            ...SANS,
+            background: "linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 50%, #0d0d0d 100%)",
+          }}
+        >
+          <FontImport />
+          {/* Animated ring */}
+          <div
+            className="w-28 h-28 rounded-full flex items-center justify-center mb-8"
+            style={{
+              background: "linear-gradient(135deg, #7A2331, #c43f55)",
+              boxShadow: "0 0 60px rgba(122,35,49,0.6), 0 0 120px rgba(122,35,49,0.3)",
+              animation: "paidPulse 2s ease-in-out infinite",
+            }}
+          >
+            <Check className="w-14 h-14 text-white stroke-[2.5px]" />
+          </div>
+
+          <h1
+            className="text-4xl text-white text-center mb-3 leading-tight"
+            style={SERIF}
+          >
+            Payment Complete!
+          </h1>
+          <p className="text-lg text-white/60 text-center mb-2" style={SERIF}>
+            Thank you for dining with us
+          </p>
+          <p className="text-sm text-white/40 text-center mb-10">
+            {restaurantInfo?.name || "Gourmet Bistro"} • Table {currentTable}
+          </p>
+
+          {/* Receipt summary */}
+          <div
+            className="w-full max-w-xs rounded-2xl p-5 mb-8"
+            style={{
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            {activeOrder?.items?.map((item, idx) => (
+              <div
+                key={idx}
+                className="flex justify-between text-xs text-white/60 mb-2"
+              >
+                <span>{item.name} <span className="text-white/40">×{item.quantity}</span></span>
+                <span>Rs {(item.price * item.quantity).toFixed(2)}</span>
+              </div>
+            ))}
+            <div
+              className="border-t mt-3 pt-3"
+              style={{ borderColor: "rgba(255,255,255,0.12)" }}
+            />
+            <div className="flex justify-between text-white font-semibold text-sm mt-1">
+              <span>Total Paid</span>
+              <span className="text-lg italic" style={SERIF}>
+                Rs {activeOrder?.billing?.total?.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-white/30 text-xs tracking-widest uppercase">
+            Resetting in 5 seconds…
+          </p>
+
+          {/* Pulse keyframe injected inline */}
+          <style>{`
+            @keyframes paidPulse {
+              0%, 100% { box-shadow: 0 0 60px rgba(122,35,49,0.6), 0 0 120px rgba(122,35,49,0.3); transform: scale(1); }
+              50% { box-shadow: 0 0 80px rgba(122,35,49,0.9), 0 0 160px rgba(122,35,49,0.5); transform: scale(1.04); }
+            }
+          `}</style>
         </div>
       )}
     </div>
