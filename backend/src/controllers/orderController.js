@@ -127,7 +127,7 @@ class OrderController {
       
       // Trigger WebSocket broadcast
       const broadcast = req.app.get('wssBroadcast');
-      if (broadcast && resolvedRestaurantId) {
+      if (broadcast && (resolvedRestaurantId || restaurantParam)) {
         broadcast({ type: 'ORDER_CREATED', order: newOrder, restaurantId: resolvedRestaurantId, restaurantSlug: restaurantParam });
       }
 

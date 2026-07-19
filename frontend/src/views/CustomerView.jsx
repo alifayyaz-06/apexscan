@@ -181,22 +181,18 @@ export default function CustomerView() {
         if (updatedOrder.status === "completed") {
           // Show the thank-you screen to the customer
           setShowPaidScreen(true);
-          // After 5 seconds, wipe ALL session data and return to welcome screen
-          setTimeout(() => {
-            const tbl = localStorage.getItem("ordering_table");
-            if (tbl) localStorage.removeItem(`active_order_table_${tbl}`);
-            localStorage.removeItem("ordering_table");
-            localStorage.removeItem("ordering_restaurant");
-            setActiveOrderId(null);
-            setActiveOrder(null);
-            setShowPaidScreen(false);
-            setCart({});
-            // Hard reload to welcome screen — clears all state cleanly
-            window.location.href = window.location.pathname;
-          }, 5000);
+          // Immediately free the table in localStorage so it can be scanned by others
+          const tbl = localStorage.getItem("ordering_table") || currentTable;
+          if (tbl) {
+            localStorage.removeItem(`active_order_table_${tbl}`);
+          }
+          // Do NOT redirect or clear React states automatically. Keep the thank-you screen active.
         } else if (updatedOrder.status === "cancelled") {
           // Cancelled: clear order state but keep customer on the menu
-          localStorage.removeItem(`active_order_table_${currentTable}`);
+          const tbl = localStorage.getItem("ordering_table") || currentTable;
+          if (tbl) {
+            localStorage.removeItem(`active_order_table_${tbl}`);
+          }
           setActiveOrderId(null);
           setActiveOrder(null);
         }
@@ -1025,9 +1021,7 @@ export default function CustomerView() {
             </div>
           </div>
 
-          <p className="text-white/30 text-xs tracking-widest uppercase">
-            Resetting in 5 seconds…
-          </p>
+
 
           {/* Pulse keyframe injected inline */}
           <style>{`

@@ -49,7 +49,7 @@ export function KitchenCard({ order, onStatusChange }) {
       <div>
         <div className="flex justify-between items-center border-b border-zinc-100 pb-3 mb-4 text-black">
           <div className="flex flex-col">
-            <span className="font-bold text-base text-zinc-950">Table {order.table}</span>
+            <span className="font-bold text-base text-zinc-950">Table {order.table_name || order.table}</span>
             <span className="text-xs font-mono text-zinc-400">{order.id}</span>
           </div>
           <div className="text-right">
@@ -138,7 +138,9 @@ export default function KitchenView() {
       // Only process orders of this restaurant
       const myId = user?.restaurantId;
       const mySlug = user?.restaurantSlug;
-      if (payload.restaurantId && payload.restaurantId !== myId && payload.restaurantSlug !== mySlug) return;
+      const matchesId = myId && payload.restaurantId && payload.restaurantId === myId;
+      const matchesSlug = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      if (!matchesId && !matchesSlug) return;
 
       playKitchenSound();
       setOrders(prev => {
@@ -151,7 +153,9 @@ export default function KitchenView() {
     const onUpdated = realTimeSync.on('ORDER_UPDATED', (payload) => {
       const myId = user?.restaurantId;
       const mySlug = user?.restaurantSlug;
-      if (payload.restaurantId && payload.restaurantId !== myId && payload.restaurantSlug !== mySlug) return;
+      const matchesId = myId && payload.restaurantId && payload.restaurantId === myId;
+      const matchesSlug = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      if (!matchesId && !matchesSlug) return;
 
       const updatedOrder = payload.order;
       setOrders(prev => {
@@ -233,7 +237,7 @@ export default function KitchenView() {
   const filteredHistory = historyOrders.filter(o => {
     const q = historySearch.toLowerCase();
     if (!q) return true;
-    return o.id.toLowerCase().includes(q) || o.table.toString().includes(q);
+    return o.id.toLowerCase().includes(q) || (o.table_name || o.table || '').toString().includes(q);
   });
 
   // Group columns
@@ -428,7 +432,7 @@ export default function KitchenView() {
                       filteredHistory.map(order => (
                         <tr key={order.id} className="bg-white hover:bg-zinc-50/80 transition-colors border-b border-zinc-100 last:border-b-0">
                           <td className="px-5 py-3.5 font-mono text-xs text-zinc-900 font-semibold">{order.id}</td>
-                          <td className="px-5 py-3.5 font-semibold text-zinc-900">Table {order.table}</td>
+                          <td className="px-5 py-3.5 font-semibold text-zinc-900">Table {order.table_name || order.table}</td>
                           <td className="px-5 py-3.5 max-w-[280px]">
                             <div className="flex flex-wrap gap-1.5">
                               {order.items.map((item, idx) => (

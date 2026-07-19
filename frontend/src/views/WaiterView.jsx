@@ -75,7 +75,9 @@ export default function WaiterView() {
       // Only process orders of this restaurant (match UUID or slug)
       const myId = user?.restaurantId;
       const mySlug = user?.restaurantSlug;
-      if (payload.restaurantId && payload.restaurantId !== myId && payload.restaurantSlug !== mySlug) return;
+      const matchesId = myId && payload.restaurantId && payload.restaurantId === myId;
+      const matchesSlug = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      if (!matchesId && !matchesSlug) return;
 
       playAlertSound();
       
@@ -103,7 +105,9 @@ export default function WaiterView() {
     const onUpdated = realTimeSync.on('ORDER_UPDATED', (payload) => {
       const myId = user?.restaurantId;
       const mySlug = user?.restaurantSlug;
-      if (payload.restaurantId && payload.restaurantId !== myId && payload.restaurantSlug !== mySlug) return;
+      const matchesId = myId && payload.restaurantId && payload.restaurantId === myId;
+      const matchesSlug = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      if (!matchesId && !matchesSlug) return;
 
       const updatedOrder = payload.order;
       
