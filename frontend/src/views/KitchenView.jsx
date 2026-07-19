@@ -50,7 +50,7 @@ export function KitchenCard({ order, onStatusChange }) {
         <div className="flex justify-between items-center border-b border-zinc-100 pb-3 mb-4 text-black">
           <div className="flex flex-col">
             <span className="font-bold text-base text-zinc-950">Table {order.table_name || order.table}</span>
-            <span className="text-xs font-mono text-zinc-400">{order.id}</span>
+            <span className="text-xs font-mono text-zinc-400">#{order.order_number || order.id.slice(0, 8)}</span>
           </div>
           <div className="text-right">
             <div className={`font-mono font-bold text-sm ${
@@ -431,7 +431,7 @@ export default function KitchenView() {
                     ) : (
                       filteredHistory.map(order => (
                         <tr key={order.id} className="bg-white hover:bg-zinc-50/80 transition-colors border-b border-zinc-100 last:border-b-0">
-                          <td className="px-5 py-3.5 font-mono text-xs text-zinc-900 font-semibold">{order.id}</td>
+                          <td className="px-5 py-3.5 font-mono text-xs text-zinc-900 font-semibold">#{order.order_number || order.id.slice(0, 8)}</td>
                           <td className="px-5 py-3.5 font-semibold text-zinc-900">Table {order.table_name || order.table}</td>
                           <td className="px-5 py-3.5 max-w-[280px]">
                             <div className="flex flex-wrap gap-1.5">
