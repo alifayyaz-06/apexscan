@@ -60,6 +60,8 @@ router.delete('/menu/:id', authenticate, authorize('admin'), tenantGuard, MenuCo
 router.post('/orders', orderLimiter, validate(createOrderSchema), OrderController.createOrder);
 router.get('/orders', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getAllOrders);
 router.get('/orders/active', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getActiveOrders);
+// Public order tracking for customers (no auth required — scoped by restaurant slug query param)
+router.get('/orders/track/:id', OrderController.trackOrder);
 router.get('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getOrderById);
 router.patch('/orders/:id/status', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(updateOrderStatusSchema), OrderController.updateOrderStatus);
 router.post('/orders/:id/pay', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(completePaySchema), OrderController.completeAndPayOrder);

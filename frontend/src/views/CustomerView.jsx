@@ -9,66 +9,83 @@ import {
   Check,
   ArrowRight,
   QrCode,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 const BACKEND_URL = API_URL;
 
+// Design tokens — kept in one place so the whole file stays consistent
+const INK = "#171512";
+const MUTED = "#8A8580";
+const LINE = "#EBE7E0";
+const WINE = "#7A2331";
+const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
+const SANS = { fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" };
+
+// Loads the two type families once per screen. Inject at the root of each
+// returned tree (component has a few early returns for different screens).
+function FontImport() {
+  return (
+    <style>{`@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');`}</style>
+  );
+}
+
 export function FoodCategoryCard({ item, quantity, onQtyChange }) {
   return (
-    <div className="group bg-white border border-[#EAEAEA] rounded-2xl overflow-hidden flex flex-col h-full transition-all duration-300 hover:border-[#D5D5D5] hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
-      {/* Food Image */}
-      <div className="relative aspect-square w-full overflow-hidden bg-[#F5F5F5]">
+    <div className="group flex flex-col" style={SANS}>
+      {/* Photo, with a floating add control living on top of it */}
+      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#F4F2EE]">
         <img
           src={item.image}
           alt={item.name}
-          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
           onError={(e) => {
             e.target.src =
               "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80";
           }}
         />
-      </div>
-
-      {/* Card Details */}
-      <div className="p-4 flex flex-col flex-grow">
-        <h3 className="text-sm font-semibold text-[#111111] tracking-tight leading-snug line-clamp-1">
-          {item.name}
-        </h3>
-
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-sm font-bold text-[#111111]">
-            Rs {item.price.toFixed(2)}
-          </span>
-
-          <div className="h-8 shrink-0">
-            {quantity > 0 ? (
-              <div className="flex items-center justify-between w-24 h-full border border-[#111111] bg-white rounded-lg overflow-hidden">
-                <button
-                  onClick={() => onQtyChange(item.id, -1)}
-                  className="w-8 h-full flex items-center justify-center text-[#111111] font-medium text-sm hover:bg-[#F5F5F5] active:scale-90 transition-all cursor-pointer"
-                >
-                  −
-                </button>
-                <span className="font-semibold text-[#111111] text-xs">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => onQtyChange(item.id, 1)}
-                  className="w-8 h-full flex items-center justify-center text-[#111111] font-medium text-sm hover:bg-[#F5F5F5] active:scale-90 transition-all cursor-pointer"
-                >
-                  +
-                </button>
-              </div>
-            ) : (
+        <div className="absolute bottom-2.5 right-2.5">
+          {quantity > 0 ? (
+            <div className="flex items-center gap-2 bg-[#171512] text-white rounded-full pl-1 pr-1 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.25)]">
+              <button
+                onClick={() => onQtyChange(item.id, -1)}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-all cursor-pointer"
+              >
+                <Minus className="w-3 h-3" strokeWidth={2.5} />
+              </button>
+              <span className="text-xs font-semibold min-w-[10px] text-center">
+                {quantity}
+              </span>
               <button
                 onClick={() => onQtyChange(item.id, 1)}
-                className="h-full px-4 bg-[#111111] hover:bg-[#000000] text-white font-semibold text-xs rounded-lg transition-all cursor-pointer"
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-all cursor-pointer"
               >
-                Add
+                <Plus className="w-3 h-3" strokeWidth={2.5} />
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => onQtyChange(item.id, 1)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-[#171512] shadow-[0_4px_14px_rgba(0,0,0,0.2)] hover:scale-110 active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Name + price */}
+      <div className="pt-3">
+        <h3
+          className="text-[15px] leading-snug text-[#171512] line-clamp-1"
+          style={SERIF}
+        >
+          {item.name}
+        </h3>
+        <span className="text-sm italic" style={{ ...SERIF, color: WINE }}>
+          Rs {item.price.toFixed(2)}
+        </span>
       </div>
     </div>
   );
@@ -200,33 +217,7 @@ export default function CustomerView() {
     }
   };
 
-  const renderBranding = (isLanding = false) => {
-    if (restaurantInfo) {
-      return (
-        <div className="flex items-center gap-3 justify-center">
-          {restaurantInfo.logo_url && (
-            <img
-              src={restaurantInfo.logo_url}
-              className={`${isLanding ? "h-14 sm:h-16" : "h-8 sm:h-9"} w-auto object-contain rounded-lg`}
-              alt={restaurantInfo.name}
-            />
-          )}
-          <span
-            className={`${isLanding ? "text-3xl sm:text-4xl" : "text-lg sm:text-xl"} font-bold text-[#111111]`}
-          >
-            {restaurantInfo.name}
-          </span>
-        </div>
-      );
-    }
-    return (
-      <div
-        className={`font-semibold tracking-tight text-[#111111] ${isLanding ? "text-3xl sm:text-4xl" : "text-xl"}`}
-      >
-        Gourmet Bistro
-      </div>
-    );
-  };
+  const restaurantName = restaurantInfo?.name || "Gourmet Bistro";
 
   const fetchOrderDetails = async (orderId) => {
     try {
@@ -340,29 +331,58 @@ export default function CustomerView() {
     return matchesCategory && matchesSearch;
   });
 
+  // When browsing "all" with no search, present the menu the way a printed
+  // menu reads — grouped into named sections rather than one flat grid.
+  const groupedMenu =
+    category === "all" && !searchTerm
+      ? filteredMenu.reduce((acc, item) => {
+          const key = item.category || "Other";
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(item);
+          return acc;
+        }, {})
+      : null;
+
   // Table selector overlay when table URL parameter is missing
   if (showDemoTableOverlay) {
     return (
-      <div className="fixed inset-0 bg-black/40 z-[300] flex items-center justify-center p-6">
-        <div className="bg-white text-[#111111] w-full max-w-sm p-8 rounded-2xl text-center border border-[#EAEAEA]">
-          <div className="w-12 h-12 border border-[#EAEAEA] rounded-xl flex items-center justify-center mx-auto mb-5">
-            <QrCode className="w-6 h-6 text-[#111111]" />
+      <div
+        className="fixed inset-0 bg-black/40 z-[300] flex items-center justify-center p-6"
+        style={SANS}
+      >
+        <FontImport />
+        <div
+          className="bg-white text-[#171512] w-full max-w-sm p-8 rounded-2xl text-center border"
+          style={{ borderColor: LINE }}
+        >
+          <div
+            className="w-12 h-12 border rounded-xl flex items-center justify-center mx-auto mb-5"
+            style={{ borderColor: LINE }}
+          >
+            <QrCode className="w-6 h-6 text-[#171512]" />
           </div>
-          <h2 className="text-lg font-semibold mb-2 text-[#111111]">
+          <h2 className="text-lg mb-2 text-[#171512]" style={SERIF}>
             Table QR Required
           </h2>
-          <p className="text-[#777777] text-xs leading-relaxed mb-6 max-w-xs mx-auto">
+          <p
+            className="text-xs leading-relaxed mb-6 max-w-xs mx-auto"
+            style={{ color: MUTED }}
+          >
             Please scan the QR code at your table. Or select a demo table number
             below to test ordering.
           </p>
           <div className="mb-6">
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#777777] text-left mb-2 pl-1">
+            <label
+              className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-left mb-2 pl-1"
+              style={{ color: MUTED }}
+            >
               Select Demo Table
             </label>
             <select
               value={selectedDemoTable}
               onChange={(e) => setSelectedDemoTable(e.target.value)}
-              className="w-full p-3 bg-white border border-[#EAEAEA] rounded-xl text-[#111111] text-sm font-medium focus:border-[#111111] outline-none cursor-pointer"
+              className="w-full p-3 bg-white border rounded-xl text-[#171512] text-sm font-medium focus:outline-none cursor-pointer"
+              style={{ borderColor: LINE }}
             >
               {Array.from({ length: 10 }, (_, i) => (
                 <option key={i + 1} value={String(i + 1)}>
@@ -373,7 +393,7 @@ export default function CustomerView() {
           </div>
           <button
             onClick={handleDemoTableSubmit}
-            className="w-full py-3.5 bg-[#111111] hover:bg-black text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+            className="w-full py-3.5 bg-[#171512] hover:bg-black text-white font-semibold text-xs uppercase tracking-[0.15em] rounded-full transition-all cursor-pointer"
           >
             Start Ordering
           </button>
@@ -382,37 +402,59 @@ export default function CustomerView() {
     );
   }
 
-  // Welcome page screen (first scan entry) — clean, no background image
+  // Welcome screen — plain white, type-led, no photography
   if (!landingExplored) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-white text-[#111111] px-6">
-        <div className="w-full max-w-sm flex flex-col items-center text-center gap-6">
-          {/* Logo / Brand */}
+      <div
+        className="flex flex-col justify-center items-center min-h-screen bg-white text-[#171512] px-6"
+        style={SANS}
+      >
+        <FontImport />
+        <div className="w-full max-w-sm flex flex-col items-center text-center gap-7">
           {restaurantInfo?.logo_url ? (
             <img
               src={restaurantInfo.logo_url}
-              className="h-16 w-16 object-contain"
-              alt={restaurantInfo.name}
+              className="h-14 w-14 object-contain"
+              alt={restaurantName}
             />
           ) : null}
 
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-[#111111]">
-              {restaurantInfo?.name || "Gourmet Bistro"}
+          <div className="flex flex-col gap-2.5">
+            <span
+              className="block text-[10px] font-semibold uppercase tracking-[0.3em]"
+              style={{ color: WINE }}
+            >
+              Welcome
+            </span>
+            <h1
+              className="text-4xl sm:text-5xl leading-[1.05] text-[#171512]"
+              style={SERIF}
+            >
+              {restaurantName}
             </h1>
-            <p className="text-sm text-[#777777]">Fresh food, made to order.</p>
+            <p
+              className="text-base italic mt-1"
+              style={{ ...SERIF, color: MUTED }}
+            >
+              Fresh food, made to order.
+            </p>
           </div>
 
-          <div className="text-[11px] font-medium uppercase tracking-wider text-[#999999] border border-[#EAEAEA] rounded-full px-4 py-1.5">
+          <div className="w-10 h-px" style={{ backgroundColor: LINE }} />
+
+          <div
+            className="text-[11px] font-semibold uppercase tracking-[0.25em]"
+            style={{ color: MUTED }}
+          >
             Table {currentTable}
           </div>
 
           <button
             onClick={() => setLandingExplored(true)}
-            className="flex items-center justify-center gap-2 bg-[#111111] hover:bg-black text-white font-semibold py-3.5 px-8 w-full rounded-xl transition-all cursor-pointer text-xs uppercase tracking-wider"
+            className="group flex items-center justify-center gap-2 bg-[#171512] hover:bg-black text-white font-semibold py-3.5 px-8 w-full rounded-full transition-all cursor-pointer text-xs uppercase tracking-[0.15em]"
           >
-            <span>Continue to Menu</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>View Menu</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </div>
@@ -420,109 +462,166 @@ export default function CustomerView() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#111111] font-sans pb-28">
+    <div className="min-h-screen bg-white text-[#171512] pb-28" style={SANS}>
+      <FontImport />
+
       {/* Sticky Header Bar */}
-      <header className="sticky top-0 bg-white/95 border-b border-[#EAEAEA] py-4 px-6 flex justify-between items-center z-40 backdrop-blur-sm">
-        {renderBranding(false)}
-        <div className="border border-[#EAEAEA] text-[#111111] px-3.5 py-1.5 rounded-lg font-semibold text-[10px] tracking-wider uppercase">
-          Table {currentTable}
+      <header
+        className="sticky top-0 bg-white/95 border-b py-5 px-6 flex justify-between items-center z-40 backdrop-blur-sm"
+        style={{ borderColor: LINE }}
+      >
+        <div className="flex items-center gap-3">
+          {restaurantInfo?.logo_url && (
+            <img
+              src={restaurantInfo.logo_url}
+              className="h-8 w-8 object-contain"
+              alt={restaurantName}
+            />
+          )}
+          <span className="text-xl text-[#171512]" style={SERIF}>
+            {restaurantName}
+          </span>
         </div>
+        <span
+          className="text-[10px] font-semibold uppercase tracking-[0.15em]"
+          style={{ color: MUTED }}
+        >
+          Table {currentTable}
+        </span>
       </header>
 
       {/* Main Core Layout */}
-      <main className="max-w-[800px] mx-auto px-4 sm:px-6 py-6">
-        {/* Inline Search Bar */}
-        <div className="relative w-full mb-6">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-[#AAAAAA]" />
+      <main className="max-w-[880px] mx-auto px-4 sm:px-6 py-8">
+        {/* Underline search field */}
+        <div
+          className="relative w-full mb-9 border-b transition-colors"
+          style={{ borderColor: searchTerm ? INK : LINE }}
+        >
+          <div className="flex items-center gap-3 py-3">
+            <Search className="h-4 w-4 shrink-0" style={{ color: MUTED }} />
+            <input
+              type="text"
+              placeholder="Search the menu"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-grow bg-transparent text-sm text-[#171512] placeholder-[#AAAAAA] focus:outline-none"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="text-[10px] font-semibold uppercase tracking-wider hover:text-[#171512] cursor-pointer"
+                style={{ color: MUTED }}
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            placeholder="Search the menu"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-12 py-3.5 bg-white border border-[#EAEAEA] rounded-xl text-sm text-[#111111] placeholder-[#AAAAAA] focus:outline-none focus:border-[#111111] transition-all"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-[10px] font-semibold text-[#777777] uppercase tracking-wider hover:text-[#111111] cursor-pointer"
+        </div>
+
+        {/* Category tabs, underline-indicator style */}
+        <nav
+          className="flex gap-7 overflow-x-auto mb-11 border-b scrollbar-none -mx-4 px-4 sm:-mx-6 sm:px-6"
+          style={{ borderColor: LINE }}
+        >
+          {Array.from(
+            new Set([
+              "all",
+              ...Array.from(
+                new Set(menuData.map((item) => item.category).filter(Boolean)),
+              ),
+            ]),
+          ).map((catId) => {
+            const label =
+              catId === "all"
+                ? "All"
+                : catId.charAt(0).toUpperCase() + catId.slice(1);
+            const isActive = category === catId;
+
+            return (
+              <button
+                key={catId}
+                onClick={() => setCategory(catId)}
+                className="relative pb-3 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors shrink-0 focus:outline-none cursor-pointer"
+                style={{ color: isActive ? INK : MUTED }}
+              >
+                {label}
+                {isActive && (
+                  <span
+                    className="absolute left-0 right-0 -bottom-px h-[2px]"
+                    style={{ backgroundColor: WINE }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Menu — grouped into printed-menu style sections when browsing "All" */}
+        {filteredMenu.length === 0 ? (
+          <div
+            className="py-16 text-center border rounded-2xl p-8"
+            style={{ borderColor: LINE }}
+          >
+            <h3 className="text-base text-[#171512]" style={SERIF}>
+              No matching items found
+            </h3>
+            <p
+              className="text-xs max-w-xs mx-auto mt-1"
+              style={{ color: MUTED }}
             >
-              Clear
-            </button>
-          )}
-        </div>
-
-        {/* Horizontal Category Nav */}
-        <div className="mb-8">
-          <nav className="flex gap-2 overflow-x-auto py-1 scrollbar-none -mx-4 px-4 sm:-mx-6 sm:px-6">
-            {Array.from(
-              new Set([
-                "all",
-                ...Array.from(
-                  new Set(
-                    menuData.map((item) => item.category).filter(Boolean),
-                  ),
-                ),
-              ]),
-            ).map((catId) => {
-              const label =
-                catId === "all"
-                  ? "All"
-                  : catId.charAt(0).toUpperCase() + catId.slice(1);
-              const isActive = category === catId;
-
-              return (
-                <button
-                  key={catId}
-                  onClick={() => setCategory(catId)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border shrink-0 focus:outline-none cursor-pointer ${
-                    isActive
-                      ? "bg-[#111111] border-[#111111] text-white"
-                      : "bg-white border-[#EAEAEA] text-[#555555] hover:border-[#CCCCCC]"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Menu Cards Grid */}
-        <section className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {filteredMenu.length === 0 ? (
-            <div className="col-span-full py-16 text-center border border-[#EAEAEA] rounded-2xl p-8">
-              <h3 className="font-semibold text-[#111111] text-sm">
-                No matching items found
-              </h3>
-              <p className="text-[#777777] text-xs max-w-xs mx-auto mt-1">
-                Try a different keyword or category.
-              </p>
-            </div>
-          ) : (
-            filteredMenu.map((item) => (
+              Try a different keyword or category.
+            </p>
+          </div>
+        ) : groupedMenu ? (
+          <div className="flex flex-col gap-12">
+            {Object.entries(groupedMenu).map(([catName, items]) => (
+              <div key={catName}>
+                <div className="flex items-center gap-4 mb-5">
+                  <h2 className="text-lg text-[#171512] shrink-0" style={SERIF}>
+                    {catName.charAt(0).toUpperCase() + catName.slice(1)}
+                  </h2>
+                  <div
+                    className="h-px flex-grow"
+                    style={{ backgroundColor: LINE }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-9">
+                  {items.map((item) => (
+                    <FoodCategoryCard
+                      key={item.id}
+                      item={item}
+                      quantity={cart[item.id] || 0}
+                      onQtyChange={handleQuantityChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-9">
+            {filteredMenu.map((item) => (
               <FoodCategoryCard
                 key={item.id}
                 item={item}
                 quantity={cart[item.id] || 0}
                 onQtyChange={handleQuantityChange}
               />
-            ))
-          )}
-        </section>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Floating Cart Bar summary */}
       {count > 0 && !activeOrderId && (
         <div
           onClick={() => setIsCartOpen(true)}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[480px] bg-[#111111] text-white flex justify-between items-center py-4 px-6 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 active:scale-98 transition-all cursor-pointer z-50"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[480px] bg-[#171512] text-white flex justify-between items-center py-4 px-6 rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.22)] hover:-translate-y-0.5 active:scale-98 transition-all cursor-pointer z-50"
         >
           <div className="flex items-center gap-3.5">
-            <div className="relative w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center">
+            <div className="relative w-9 h-9 bg-white/10 rounded-full flex items-center justify-center">
               <ShoppingBag className="w-4.5 h-4.5 text-white" />
-              <span className="absolute -top-1.5 -right-1.5 bg-white text-[#111111] font-bold text-[9px] w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 bg-white text-[#171512] font-bold text-[9px] w-5 h-5 rounded-full flex items-center justify-center">
                 {count}
               </span>
             </div>
@@ -534,7 +633,9 @@ export default function CustomerView() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-bold text-sm">Rs {total.toFixed(2)}</span>
+            <span className="text-base italic" style={SERIF}>
+              Rs {total.toFixed(2)}
+            </span>
             <ArrowRight className="w-4 h-4 text-white" />
           </div>
         </div>
@@ -551,16 +652,20 @@ export default function CustomerView() {
             className="bg-white w-full max-w-[440px] h-full shadow-2xl flex flex-col"
           >
             {/* Drawer Header */}
-            <div className="flex justify-between items-center p-6 border-b border-[#EAEAEA]">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-[#111111]" />
-                <h2 className="text-lg font-bold text-[#111111]">
+            <div
+              className="flex justify-between items-center p-6 border-b"
+              style={{ borderColor: LINE }}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShoppingBag className="w-5 h-5 text-[#171512]" />
+                <h2 className="text-lg text-[#171512]" style={SERIF}>
                   Your Basket
                 </h2>
               </div>
               <button
                 onClick={() => setIsCartOpen(false)}
-                className="w-8 h-8 rounded-full border border-[#EAEAEA] flex items-center justify-center text-[#777777] hover:text-[#111111] hover:border-[#CCCCCC] transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full border flex items-center justify-center hover:text-[#171512] transition-colors cursor-pointer"
+                style={{ borderColor: LINE, color: MUTED }}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -570,10 +675,13 @@ export default function CustomerView() {
             <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-3">
               {Object.keys(cart).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
-                  <p className="text-[#777777] font-semibold text-sm">
+                  <p className="font-semibold text-sm" style={{ color: MUTED }}>
                     Your basket is empty
                   </p>
-                  <p className="text-[#AAAAAA] text-xs max-w-xs leading-normal">
+                  <p
+                    className="text-xs max-w-xs leading-normal"
+                    style={{ color: "#B5B0A9" }}
+                  >
                     Browse the menu and add items to order to your table.
                   </p>
                 </div>
@@ -584,29 +692,38 @@ export default function CustomerView() {
                   return (
                     <div
                       key={id}
-                      className="flex justify-between items-center border border-[#EAEAEA] p-4 rounded-xl"
+                      className="flex justify-between items-center border p-4 rounded-xl"
+                      style={{ borderColor: LINE }}
                     >
                       <div className="flex flex-col pr-2">
-                        <span className="font-semibold text-sm text-[#111111] line-clamp-1">
+                        <span className="font-semibold text-sm text-[#171512] line-clamp-1">
                           {item.name}
                         </span>
-                        <span className="text-xs text-[#777777] mt-0.5">
+                        <span
+                          className="text-xs italic mt-0.5"
+                          style={{ ...SERIF, color: WINE }}
+                        >
                           Rs {item.price.toFixed(2)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 border border-[#EAEAEA] px-3 py-1.5 rounded-lg shrink-0">
+                      <div
+                        className="flex items-center gap-3 border px-3 py-1.5 rounded-full shrink-0"
+                        style={{ borderColor: LINE }}
+                      >
                         <button
                           onClick={() => handleQuantityChange(id, -1)}
-                          className="text-[#777777] hover:text-[#111111] font-semibold text-sm transition-colors cursor-pointer"
+                          className="hover:text-[#171512] font-semibold text-sm transition-colors cursor-pointer"
+                          style={{ color: MUTED }}
                         >
                           −
                         </button>
-                        <span className="font-semibold text-xs text-[#111111] min-w-[14px] text-center">
+                        <span className="font-semibold text-xs text-[#171512] min-w-[14px] text-center">
                           {cart[id]}
                         </span>
                         <button
                           onClick={() => handleQuantityChange(id, 1)}
-                          className="text-[#777777] hover:text-[#111111] font-semibold text-sm transition-colors cursor-pointer"
+                          className="hover:text-[#171512] font-semibold text-sm transition-colors cursor-pointer"
+                          style={{ color: MUTED }}
                         >
                           +
                         </button>
@@ -619,30 +736,44 @@ export default function CustomerView() {
 
             {/* Drawer Footer with calculation breakdown */}
             {Object.keys(cart).length > 0 && (
-              <div className="p-6 border-t border-[#EAEAEA]">
+              <div className="p-6 border-t" style={{ borderColor: LINE }}>
                 <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-xs text-[#777777]">
+                  <div
+                    className="flex justify-between text-xs"
+                    style={{ color: MUTED }}
+                  >
                     <span>Subtotal</span>
                     <span>Rs {subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-[#777777]">
+                  <div
+                    className="flex justify-between text-xs"
+                    style={{ color: MUTED }}
+                  >
                     <span>Tax (8%)</span>
                     <span>Rs {tax.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-[#777777]">
+                  <div
+                    className="flex justify-between text-xs"
+                    style={{ color: MUTED }}
+                  >
                     <span>Service Charge (5%)</span>
                     <span>Rs {service.toFixed(2)}</span>
                   </div>
-                  <div className="border-t border-[#EAEAEA] my-2"></div>
-                  <div className="flex justify-between text-base font-bold text-[#111111]">
+                  <div
+                    className="border-t my-2"
+                    style={{ borderColor: LINE }}
+                  ></div>
+                  <div className="flex justify-between items-baseline text-base font-semibold text-[#171512]">
                     <span>Total</span>
-                    <span>Rs {total.toFixed(2)}</span>
+                    <span className="text-lg italic" style={SERIF}>
+                      Rs {total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
                 <button
                   onClick={handlePlaceOrder}
-                  className="w-full bg-[#111111] hover:bg-black text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider"
+                  className="w-full bg-[#171512] hover:bg-black text-white font-semibold py-4 rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-[0.15em]"
                 >
                   <span>Place Order</span>
                   <ArrowRight className="w-4 h-4" />
@@ -656,18 +787,31 @@ export default function CustomerView() {
       {/* Stepper Status Tracking Modal Overlay */}
       {activeOrder && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-5">
-          <div className="bg-white text-[#111111] w-full max-w-[480px] border border-[#EAEAEA] p-6 rounded-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-3 border-b border-[#EAEAEA] pb-4 mb-6">
-              <h2 className="text-base font-bold text-[#111111] flex-grow">
+          <div
+            className="bg-white text-[#171512] w-full max-w-[480px] border p-6 rounded-2xl max-h-[90vh] overflow-y-auto"
+            style={{ borderColor: LINE }}
+          >
+            <div
+              className="flex items-center gap-3 border-b pb-4 mb-6"
+              style={{ borderColor: LINE }}
+            >
+              <h2 className="text-base flex-grow text-[#171512]" style={SERIF}>
                 Track Your Order
               </h2>
-              <span className="border border-[#EAEAEA] text-[#777777] font-mono text-[10px] font-semibold px-3 py-1 rounded-lg">
+              <span
+                className="border font-mono text-[10px] font-semibold px-3 py-1 rounded-lg"
+                style={{ borderColor: LINE, color: MUTED }}
+              >
                 ID: {activeOrder.id.slice(0, 8)}
               </span>
             </div>
 
             {/* Stepper Graphics Timeline */}
-            <div className="flex flex-col gap-5 mb-8 relative pl-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[#EEEEEE]">
+            <div className="flex flex-col gap-5 mb-8 relative pl-6">
+              <div
+                className="absolute left-[11px] top-2 bottom-2 w-[2px]"
+                style={{ backgroundColor: LINE }}
+              />
               {[
                 {
                   id: "pending",
@@ -705,23 +849,23 @@ export default function CustomerView() {
                 return (
                   <div
                     key={step.id}
-                    className={`relative flex gap-4 items-start transition-all duration-300 ${
-                      isActive
-                        ? "opacity-100"
-                        : isCompleted
-                          ? "opacity-80"
-                          : "opacity-35"
-                    }`}
+                    className="relative flex gap-4 items-start transition-all duration-300"
+                    style={{
+                      opacity: isActive ? 1 : isCompleted ? 0.85 : 0.35,
+                    }}
                   >
                     {/* Circle timeline Indicator */}
                     <div
-                      className={`absolute -left-[21px] w-6 h-6 rounded-full font-semibold text-xs flex items-center justify-center shrink-0 border-2 z-10 transition-colors bg-white ${
-                        isCompleted
-                          ? "border-[#111111] text-[#111111]"
-                          : isActive
-                            ? "bg-[#111111] border-[#111111] text-white"
-                            : "border-[#DDDDDD] text-[#AAAAAA]"
-                      }`}
+                      className="absolute -left-[21px] w-6 h-6 rounded-full font-semibold text-xs flex items-center justify-center shrink-0 border-2 z-10 bg-white transition-colors"
+                      style={{
+                        borderColor: isCompleted || isActive ? WINE : "#DDDDDD",
+                        backgroundColor: isActive ? WINE : "#FFFFFF",
+                        color: isActive
+                          ? "#FFFFFF"
+                          : isCompleted
+                            ? WINE
+                            : "#AAAAAA",
+                      }}
                     >
                       {isCompleted ? (
                         <Check className="w-3.5 h-3.5 stroke-[3px]" />
@@ -732,11 +876,15 @@ export default function CustomerView() {
 
                     <div className="pl-2">
                       <div
-                        className={`font-semibold text-sm ${isActive ? "text-[#111111]" : "text-[#555555]"}`}
+                        className="font-semibold text-sm"
+                        style={{ color: isActive ? INK : "#555555" }}
                       >
                         {step.title}
                       </div>
-                      <div className="text-[#777777] text-[11px] mt-0.5">
+                      <div
+                        className="text-[11px] mt-0.5"
+                        style={{ color: MUTED }}
+                      >
                         {step.desc}
                       </div>
                     </div>
@@ -746,19 +894,23 @@ export default function CustomerView() {
             </div>
 
             {/* Mini invoice summary */}
-            <div className="border border-[#EAEAEA] p-5 rounded-xl mb-6">
-              <h3 className="font-semibold text-xs text-[#111111] uppercase tracking-wider mb-3">
+            <div
+              className="border p-5 rounded-xl mb-6"
+              style={{ borderColor: LINE }}
+            >
+              <h3 className="font-semibold text-xs uppercase tracking-wider mb-3 text-[#171512]">
                 Order Details
               </h3>
               <ul className="flex flex-col gap-2.5">
                 {activeOrder.items.map((item, idx) => (
                   <li
                     key={idx}
-                    className="flex justify-between text-xs text-[#777777]"
+                    className="flex justify-between text-xs"
+                    style={{ color: MUTED }}
                   >
                     <span>
                       {item.name}{" "}
-                      <span className="text-[#111111] font-semibold">
+                      <span className="font-semibold text-[#171512]">
                         x{item.quantity}
                       </span>
                     </span>
@@ -766,21 +918,30 @@ export default function CustomerView() {
                   </li>
                 ))}
               </ul>
-              <div className="border-t border-[#EAEAEA] my-4"></div>
-              <div className="flex justify-between font-bold text-sm text-[#111111]">
+              <div
+                className="border-t my-4"
+                style={{ borderColor: LINE }}
+              ></div>
+              <div className="flex justify-between items-baseline font-semibold text-sm text-[#171512]">
                 <span>Total</span>
-                <span>Rs {activeOrder.billing.total.toFixed(2)}</span>
+                <span className="text-base italic" style={SERIF}>
+                  Rs {activeOrder.billing.total.toFixed(2)}
+                </span>
               </div>
             </div>
 
             <div className="text-center space-y-3">
-              <p className="text-[11px] text-[#777777] leading-relaxed">
+              <p
+                className="text-[11px] leading-relaxed"
+                style={{ color: MUTED }}
+              >
                 You can browse the menu or add more items. We'll update this
                 page when your order status changes.
               </p>
               <button
                 onClick={() => setActiveOrder(null)} // hide overlay locally
-                className="w-full py-3 border border-[#EAEAEA] hover:border-[#CCCCCC] text-[#111111] font-semibold rounded-xl transition-colors cursor-pointer"
+                className="w-full py-3 border font-semibold rounded-full transition-colors cursor-pointer text-[#171512]"
+                style={{ borderColor: LINE }}
               >
                 Back to Menu
               </button>

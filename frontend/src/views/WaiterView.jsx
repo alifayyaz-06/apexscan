@@ -56,6 +56,8 @@ export default function WaiterView() {
   const [posLoading, setPosLoading] = useState(false);
   const [activeNotification, setActiveNotification] = useState(null);
   const [ridersList, setRidersList] = useState([]);
+  // Ref to track whether audio has been unlocked by user interaction
+  const audioUnlocked = React.useRef(false);
 
   useEffect(() => {
     if (user?.restaurantSlug) {
@@ -81,9 +83,15 @@ export default function WaiterView() {
       const isManual = order.billing?.order_source === 'manual';
       if (!isManual) {
         setActiveNotification(order);
+        // Also fire a sonner toast for immediate visibility
+        const itemCount = order.items?.reduce((s, i) => s + i.quantity, 0) || 0;
+        toast.success(
+          `🔔 New order from Table ${order.table_name || order.table} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`,
+          { duration: 6000 }
+        );
         setTimeout(() => {
           setActiveNotification(prev => prev && prev.id === order.id ? null : prev);
-        }, 8000);
+        }, 10000);
       }
 
       setLiveOrders(prev => {
@@ -526,8 +534,14 @@ export default function WaiterView() {
 
   const playAlertSound = () => {
     try {
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/911/911-84.wav");
+      const src = "https://assets.mixkit.co/active_storage/sfx/911/911-84.wav";
+      const audio = new Audio(src);
       audio.play().catch(() => {});
+      // Play a second ring 800ms later for better audibility
+      setTimeout(() => {
+        const audio2 = new Audio(src);
+        audio2.play().catch(() => {});
+      }, 800);
     } catch (e) {}
   };
 

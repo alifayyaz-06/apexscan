@@ -36,6 +36,48 @@ class OrderController {
     }
   }
 
+  /**
+   * GET /api/v1/orders/track/:id?restaurant=<slug>
+   * Public endpoint — no auth required.
+   * Allows customers to re-fetch their order status after a page reload.
+   * Requires the restaurant slug as a query param for tenant scoping.
+   */
+  static async trackOrder(req, res) {
+    try {
+      const { id } = req.params;
+      const slug = req.query.restaurant;
+
+      if (!slug) {
+        return res.status(400).json({ success: false, message: 'restaurant query param is required.' });
+      }
+
+      const client = getTenantClient(slug);
+      const order = await Order.getById(id, client);
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found or has expired.' });
+      }
+
+      // Only expose safe fields to the customer (no internal billing details beyond total)
+      const safeOrder = {
+        id: order.id,
+        status: order.status,
+        table_name: order.table_name,
+        items: order.items,
+        billing: {
+          subtotal: order.billing?.subtotal,
+          tax: order.billing?.tax,
+          serviceCharge: order.billing?.serviceCharge,
+          total: order.billing?.total
+        }
+      };
+
+      return res.status(200).json({ success: true, data: safeOrder });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   static async createOrder(req, res) {
     try {
       const { table, items, restaurant_id, billing } = req.body;
