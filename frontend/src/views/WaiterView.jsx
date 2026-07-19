@@ -918,7 +918,7 @@ export default function WaiterView() {
                     >
                       <div>
                         {/* Product Image */}
-                        <div className="w-full h-14 rounded-md bg-zinc-100 border border-zinc-150 overflow-hidden mb-1.5 relative flex items-center justify-center">
+                        <div className="w-full aspect-square rounded-md bg-zinc-100 border border-zinc-150 overflow-hidden mb-1.5 relative flex items-center justify-center">
                           {item.image ? (
                             <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={item.name} />
                           ) : (
