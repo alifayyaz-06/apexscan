@@ -272,7 +272,9 @@ export default function AdminView() {
   // ╚═══════════════════════════════════════╝
   const openAddModal = () => {
     setMenuEditItem(null);
-    setMenuForm({ id: '', name: '', category: 'starters', price: '', description: '', image: '' });
+    // Auto-generate a unique ID for the new item
+    const autoId = crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setMenuForm({ id: autoId, name: '', category: 'starters', price: '', description: '', image: '' });
     setImagePreview(null);
     setIsCustomCategory(false);
     setCustomCategoryVal('');
@@ -380,15 +382,14 @@ export default function AdminView() {
           setMenuItems(prev => prev.map(i => i.id === menuEditItem.id ? result.data : i));
         }
       } else {
-        // Create new
-        const newId = menuForm.id || `item_${Date.now()}`;
+        // Create new — ID was auto-generated when modal opened
         const res = await fetch(`${BACKEND_URL}/api/v1/menu`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...authHeaders()
           },
-          body: JSON.stringify({ ...menuForm, id: newId, price: parseFloat(menuForm.price) })
+          body: JSON.stringify({ ...menuForm, price: parseFloat(menuForm.price) })
         });
         const result = await res.json();
         if (result.success) {

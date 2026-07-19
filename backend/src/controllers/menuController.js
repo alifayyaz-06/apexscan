@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const Menu = require('../models/Menu');
 const { defaultClient, getTenantClient } = require('../utils/supabase');
 
@@ -54,10 +55,13 @@ class MenuController {
 
   static async createMenuItem(req, res) {
     try {
-      const { id, name, category, price, description, image } = req.body;
-      if (!id || !name || !category || price === undefined) {
-        return res.status(400).json({ success: false, message: 'Missing required fields: id, name, category, price.' });
+      const { name, category, price, description, image } = req.body;
+      if (!name || !category || price === undefined) {
+        return res.status(400).json({ success: false, message: 'Missing required fields: name, category, price.' });
       }
+
+      // Auto-generate a unique ID if none was provided
+      const id = (req.body.id && req.body.id.trim()) ? req.body.id.trim() : randomUUID();
 
       const client = req.supabase || defaultClient;
       const newItem = await Menu.create({

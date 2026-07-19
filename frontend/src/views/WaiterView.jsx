@@ -905,36 +905,36 @@ export default function WaiterView() {
               {filteredMenuItems.length === 0 ? (
                 <div className="text-center py-20 text-zinc-400 italic text-sm">No items found matching the filters.</div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                   {filteredMenuItems.map(item => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => addToCart(item)}
                       disabled={!item.is_available}
-                      className={`text-left bg-white border rounded-2xl p-3 flex flex-col justify-between transition-all hover:shadow-md border-zinc-200 hover:border-zinc-350 relative overflow-hidden group ${
+                      className={`text-left bg-white border rounded-xl p-2 flex flex-col justify-between transition-all hover:shadow-md border-zinc-200 hover:border-zinc-350 relative overflow-hidden group ${
                         !item.is_available ? 'opacity-50 cursor-not-allowed bg-zinc-50' : ''
                       }`}
                     >
                       <div>
                         {/* Product Image */}
-                        <div className="w-full aspect-video rounded-xl bg-zinc-100 border border-zinc-150 overflow-hidden mb-3 relative flex items-center justify-center">
+                        <div className="w-full aspect-square rounded-lg bg-zinc-100 border border-zinc-150 overflow-hidden mb-2 relative flex items-center justify-center">
                           {item.image ? (
                             <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={item.name} />
                           ) : (
-                            <span className="text-3xl">🍲</span>
+                            <span className="text-2xl">🍲</span>
                           )}
                           {!item.is_available && (
-                            <span className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs font-black text-white uppercase tracking-wider">Out of Stock</span>
+                            <span className="absolute inset-0 bg-black/40 flex items-center justify-center text-[9px] font-black text-white uppercase tracking-wider">Out of Stock</span>
                           )}
                         </div>
-                        <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-1 block">{item.category}</span>
-                        <h4 className="font-bold text-xs text-[#2B2D42] mb-1 line-clamp-2 leading-tight">{item.name}</h4>
+                        <span className="text-[9px] font-black uppercase text-zinc-400 tracking-wider mb-0.5 block">{item.category}</span>
+                        <h4 className="font-bold text-[11px] text-[#2B2D42] mb-0.5 line-clamp-2 leading-tight">{item.name}</h4>
                       </div>
-                      <div className="flex justify-between items-center mt-3 pt-2 border-t border-zinc-50">
-                        <span className="font-extrabold text-sm text-black">Rs {item.price.toFixed(2)}</span>
+                      <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-zinc-50">
+                        <span className="font-extrabold text-xs text-black">Rs {item.price.toFixed(2)}</span>
                         {item.is_available && (
-                          <span className="h-6 w-6 rounded-lg bg-zinc-50 border border-zinc-200 flex items-center justify-center text-xs font-bold group-hover:bg-black group-hover:text-white transition-colors">+</span>
+                          <span className="h-5 w-5 rounded-md bg-zinc-50 border border-zinc-200 flex items-center justify-center text-[10px] font-bold group-hover:bg-black group-hover:text-white transition-colors">+</span>
                         )}
                       </div>
                     </button>
