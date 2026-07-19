@@ -532,7 +532,7 @@ export default function AdminView() {
   // ╚═══════════════════════════════════════╝
   const getQrUrl = (tableNum) => {
     const target = `${window.location.origin}/r/${user?.restaurantSlug || 'default'}/customer?table=${tableNum}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=E63946&bgcolor=ffffff&qzone=2&data=${encodeURIComponent(target)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=000000&bgcolor=ffffff&qzone=2&data=${encodeURIComponent(target)}`;
   };
 
   const printSingleQr = (tableNum) => {

@@ -26,7 +26,7 @@ export default function PortalView() {
     : `${window.location.protocol}//${window.location.hostname}:3006/customer?table=${selectedTable}`;
   
   // Clean QR Server API URL
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=2B2D42&bgcolor=ffffff&qzone=1&data=${encodeURIComponent(targetUrl)}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=000000&bgcolor=ffffff&qzone=1&data=${encodeURIComponent(targetUrl)}`;
 
   const handlePrint = () => {
     window.print();

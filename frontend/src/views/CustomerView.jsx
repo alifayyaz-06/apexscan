@@ -322,7 +322,7 @@ export default function CustomerView() {
         body: JSON.stringify({
           table: currentTable,
           items: itemsArray,
-          restaurant_id: restaurantId,
+          restaurant_id: resolvedUuid || restaurantId,
         }),
       });
       const result = await response.json();

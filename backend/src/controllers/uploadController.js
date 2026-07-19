@@ -1,8 +1,8 @@
 const multer = require('multer');
 const path = require('path');
-const supabase = require('../utils/supabase');
+const { cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 
-// Multer memory storage (we keep file in RAM, then push to Supabase Storage)
+// Multer memory storage (keeps file in RAM, then uploads to Cloudinary)
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -27,65 +27,51 @@ class UploadController {
 
   static async uploadImage(req, res) {
     try {
+      if (!isCloudinaryConfigured) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cloudinary is not configured. Please add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET to your .env file to enable image uploads.'
+        });
+      }
+
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'No image file provided.' });
       }
 
       const file = req.file;
-      const fileExt = path.extname(file.originalname).toLowerCase();
-      const fileName = `menu_${Date.now()}${fileExt}`;
-      const filePath = `menu-images/${fileName}`;
+      
+      // Use tenant slug or ID for folder partitioning
+      const tenantFolder = `smart-ordering/${req.restaurantSlug || 'general'}`;
 
-      // Auto-ensure public bucket exists
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets();
-        const hasBucket = buckets && buckets.some(b => b.id === 'menu-images');
-        if (!hasBucket) {
-          const { error: bucketError } = await supabase.storage.createBucket('menu-images', {
-            public: true,
-            fileSizeLimit: 5242880
-          });
-          if (bucketError) {
-            console.warn('Auto-create bucket failed:', bucketError.message);
-          } else {
-            console.log('Successfully created public storage bucket: menu-images');
-          }
-        }
-      } catch (bucketCheckErr) {
-        console.warn('Storage bucket check warning:', bucketCheckErr.message);
-      }
-
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('menu-images')
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false,
+      // Helper function to stream buffer to Cloudinary
+      const uploadStreamPromise = (buffer, folder) => {
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: folder,
+              resource_type: 'image'
+            },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          );
+          stream.end(buffer);
         });
+      };
 
-      if (error) throw error;
-
-      // Get public URL
-      const { data: publicData } = supabase.storage
-        .from('menu-images')
-        .getPublicUrl(filePath);
+      const result = await uploadStreamPromise(file.buffer, tenantFolder);
 
       return res.status(200).json({
         success: true,
         data: {
-          url: publicData.publicUrl,
-          path: filePath,
-          fileName: fileName,
+          url: result.secure_url,
+          public_id: result.public_id,
+          fileName: result.original_filename
         }
       });
     } catch (err) {
-      console.error('Image upload error:', err.message);
-      if (err.message === 'Bucket not found') {
-        return res.status(404).json({
-          success: false,
-          message: "The Supabase storage bucket 'menu-images' does not exist. Please go to your Supabase Dashboard -> Storage and create a new public bucket named 'menu-images' to enable image uploads."
-        });
-      }
+      console.error('Cloudinary upload error:', err.message);
       return res.status(500).json({ success: false, message: err.message });
     }
   }

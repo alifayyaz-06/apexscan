@@ -149,9 +149,9 @@ export default function KitchenView() {
       // Only process orders of this restaurant
       const myId = user?.restaurantId;
       const mySlug = user?.restaurantSlug;
-      const matchesId = myId && payload.restaurantId && payload.restaurantId === myId;
-      const matchesSlug = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
-      if (!matchesId && !matchesSlug) return;
+      const hasIdMatch = myId && payload.restaurantId && payload.restaurantId === myId;
+      const hasSlugMatch = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
 
       playKitchenSound();
       setOrders(prev => {
@@ -164,9 +164,9 @@ export default function KitchenView() {
     const onUpdated = realTimeSync.on('ORDER_UPDATED', (payload) => {
       const myId = user?.restaurantId;
       const mySlug = user?.restaurantSlug;
-      const matchesId = myId && payload.restaurantId && payload.restaurantId === myId;
-      const matchesSlug = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
-      if (!matchesId && !matchesSlug) return;
+      const hasIdMatch = myId && payload.restaurantId && payload.restaurantId === myId;
+      const hasSlugMatch = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
 
       const updatedOrder = payload.order;
       setOrders(prev => {

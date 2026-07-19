@@ -37,6 +37,11 @@ const config = {
 
   // Rate limit
   disableRateLimit: process.env.DISABLE_RATE_LIMIT === "true",
+
+  // Cloudinary
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
 };
 
 // Required environment variables
