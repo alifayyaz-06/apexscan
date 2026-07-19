@@ -956,17 +956,7 @@ export default function CustomerView() {
               </div>
             </div>
 
-            {/* Locked notice — no going back while order is active */}
-            <div
-              className="flex items-center gap-2 rounded-xl px-4 py-3"
-              style={{ backgroundColor: "#FFF8F0", border: `1px solid #F5DFC5` }}
-            >
-              <span style={{ fontSize: 16 }}>🔒</span>
-              <p className="text-[11px] leading-relaxed" style={{ color: "#9A6020" }}>
-                Your order is being prepared. This screen will update automatically.
-                Payment will clear your session when the bill is settled.
-              </p>
-            </div>
+
           </div>
         </div>
       )}
