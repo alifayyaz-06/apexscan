@@ -93,6 +93,17 @@ class RealTimeSync {
     const list = this.listeners[event] || [];
     list.forEach(cb => cb(data));
   }
+
+  onOrderUpdate(callback) {
+    const cbCreated = (data) => callback(data.order || data);
+    const cbUpdated = (data) => callback(data.order || data);
+    this.on('ORDER_CREATED', cbCreated);
+    this.on('ORDER_UPDATED', cbUpdated);
+    return () => {
+      this.off('ORDER_CREATED', cbCreated);
+      this.off('ORDER_UPDATED', cbUpdated);
+    };
+  }
 }
 
 import { WS_URL } from './config';

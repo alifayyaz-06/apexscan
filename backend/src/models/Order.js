@@ -5,12 +5,20 @@ function generateOrderId() {
   return 'ORD-' + Math.floor(1000 + Math.random() * 9000);
 }
 
+function resolveSlug(supabaseClient) {
+  let slug = supabaseClient?.tenantSlug || (typeof supabaseClient === 'string' ? supabaseClient : 'gourmet-bistro-main');
+  if (!slug || slug === 'default' || String(slug).toLowerCase() === 'default') {
+    return 'gourmet-bistro-main';
+  }
+  return slug;
+}
+
 let localOrdersFallback = [];
 
 class Order {
   static async getAll(supabaseClient = defaultClient) {
     try {
-      const slug = supabaseClient.tenantSlug || (typeof supabaseClient === 'string' ? supabaseClient : 'gourmet-bistro-main');
+      const slug = resolveSlug(supabaseClient);
       const { data, error } = await defaultClient.rpc('query_tenant', {
         tenant_slug: slug,
         table_name: 'orders',
@@ -36,7 +44,7 @@ class Order {
   
   static async getActive(supabaseClient = defaultClient) {
     try {
-      const slug = supabaseClient.tenantSlug || (typeof supabaseClient === 'string' ? supabaseClient : 'gourmet-bistro-main');
+      const slug = resolveSlug(supabaseClient);
       const { data, error } = await defaultClient.rpc('query_tenant', {
         tenant_slug: slug,
         table_name: 'orders',
@@ -62,7 +70,7 @@ class Order {
 
   static async getById(id, supabaseClient = defaultClient) {
     try {
-      const slug = supabaseClient.tenantSlug || (typeof supabaseClient === 'string' ? supabaseClient : 'gourmet-bistro-main');
+      const slug = resolveSlug(supabaseClient);
       const { data, error } = await defaultClient.rpc('query_tenant', {
         tenant_slug: slug,
         table_name: 'orders',
@@ -87,7 +95,7 @@ class Order {
 
   static async create(table, items, supabaseClient = defaultClient, customBilling = null) {
     try {
-      const slug = supabaseClient.tenantSlug || (typeof supabaseClient === 'string' ? supabaseClient : 'gourmet-bistro-main');
+      const slug = resolveSlug(supabaseClient);
       const menuItems = await Menu.getAll(supabaseClient);
       const orderItems = [];
       let subtotal = 0;
@@ -133,7 +141,33 @@ class Order {
       const subtotalAfterDiscount = subtotal - (customBilling?.discount || 0);
       const calculatedTotal = parseFloat((subtotalAfterDiscount + tax + serviceCharge).toFixed(2));
 
+      // Calculate daily resetting invoice number (INV-YYYYMMDD-001)
+      const todayDateObj = new Date();
+      const yyyy = todayDateObj.getFullYear();
+      const mm = String(todayDateObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(todayDateObj.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}${mm}${dd}`;
+
+      let dailySeq = 1;
+      try {
+        const allOrders = await this.getAll(supabaseClient);
+        const todayPrefix = `INV-${dateStr}-`;
+        const todayOrders = (allOrders || []).filter(o => {
+          const oDate = o.timestamp || o.created_at;
+          if (oDate && new Date(oDate).toDateString() === todayDateObj.toDateString()) return true;
+          if (o.billing?.invoice_no && o.billing.invoice_no.startsWith(todayPrefix)) return true;
+          return false;
+        });
+        dailySeq = todayOrders.length + 1;
+      } catch (seqErr) {
+        console.error('Error calculating daily sequence:', seqErr.message);
+      }
+
+      const invoiceNo = `INV-${dateStr}-${String(dailySeq).padStart(3, '0')}`;
+
       const mergedBilling = {
+        invoice_no: invoiceNo,
+        daily_order_number: dailySeq,
         subtotal: subtotal,
         tax: customBilling?.tax !== undefined ? parseFloat(customBilling.tax) : tax,
         serviceCharge: customBilling?.serviceCharge !== undefined ? parseFloat(customBilling.serviceCharge) : serviceCharge,
@@ -164,6 +198,8 @@ class Order {
         table_name: table.toString(),
         items: orderItems,
         status: customBilling?.order_source === 'manual' ? 'confirmed' : (customBilling?.status || 'pending'),
+        invoice_no: invoiceNo,
+        daily_order_number: dailySeq,
         billing: mergedBilling
       };
 

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
 import { API_URL } from '../utils/config';
+import { formatOrderId, formatReceiptDate, formatCurrency } from '../utils/formatters';
 
 const BACKEND_URL = API_URL;
 
@@ -240,9 +241,9 @@ export default function WaiterView() {
       html = `
         <html>
           <head>
-            <title>KOT - ${order.id}</title>
+            <title>KOT - ${formatOrderId(order)}</title>
             <style>
-              @page { margin: 0; }
+              @page { margin: 0; size: 80mm auto; }
               body { margin: 0; padding: 10px; font-family: monospace; font-size: 12px; color: black; background: white; }
               .text-center { text-align: center; }
               .border-b { border-bottom: 1px dashed black; }
@@ -259,8 +260,8 @@ export default function WaiterView() {
           <body>
             <div class="text-center border-b pb-2 mb-2">
               <div style="font-size: 16px; font-weight: bold; text-transform: uppercase;">KOT (Kitchen Order Ticket)</div>
-              <div style="font-size: 14px; font-weight: bold; margin-top: 5px;">Order ID: #${order.order_number || order.id.slice(0, 8)}</div>
-              <div style="font-size: 11px;">Date: ${new Date(order.timestamp).toLocaleString()}</div>
+              <div style="font-size: 14px; font-weight: bold; margin-top: 5px;">Order ID: ${formatOrderId(order)}</div>
+              <div style="font-size: 11px;">Date: ${formatReceiptDate(order.timestamp || order.created_at)}</div>
               <div style="font-size: 13px; font-weight: bold; margin-top: 5px; text-transform: uppercase;">
                 Type: ${order.billing?.order_type?.replace('_', ' ') || 'dine in'}
               </div>
@@ -268,7 +269,7 @@ export default function WaiterView() {
                 <div style="font-size: 14px; font-weight: bold;">
                   ${['Take Away', 'Delivery'].includes(order.table_name || order.table)
                     ? (order.table_name || order.table)
-                    : `Table: ${order.table_name || order.table}`}
+                    : `Table: T-${String(order.table_name || order.table).padStart(2, '0')}`}
                 </div>
               ` : ''}
             </div>
@@ -280,7 +281,7 @@ export default function WaiterView() {
                 </tr>
               </thead>
               <tbody>
-                ${order.items.map(item => `
+                ${(order.items || []).map(item => `
                   <tr class="item-row">
                     <td style="font-size: 12px;">${item.name}</td>
                     <td class="text-right" style="font-size: 12px; font-weight: bold;">x${item.quantity}</td>
@@ -298,114 +299,169 @@ export default function WaiterView() {
         </html>
       `;
     } else {
-      // Customer Receipt
+      // Customer Thermal Receipt
       html = `
         <html>
           <head>
-            <title>Receipt - #${order.order_number || order.id.slice(0, 8)}</title>
+            <title>Receipt - ${formatOrderId(order)}</title>
             <style>
-              @page { margin: 0; }
-              body { margin: 0; padding: 10px; font-family: monospace; font-size: 12px; color: black; background: white; }
+              @page { margin: 0; size: 80mm auto; }
+              body {
+                margin: 0;
+                padding: 10px;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12px;
+                color: black;
+                background: white;
+                line-height: 1.3;
+              }
               .text-center { text-align: center; }
-              .border-b { border-bottom: 1px dashed black; }
-              .pb-2 { padding-bottom: 5px; }
-              .mb-2 { margin-bottom: 10px; }
-              .font-bold { font-weight: bold; }
-              table { width: 100%; border-collapse: collapse; }
-              th, td { padding: 3px 0; text-align: left; }
               .text-right { text-align: right; }
-              .text-center-align { text-align: center; }
-              .totals-box { border-top: 1px dashed black; padding-top: 4px; font-size: 11px; line-height: 1.3; }
-              .flex-row { display: flex; justify-content: space-between; }
-              .grand-total { font-size: 13px; font-weight: bold; border-top: 1px solid black; padding-top: 4px; margin-top: 4px; }
-              .delivery-box { border-top: 1px solid black; margin-top: 8px; padding-top: 4px; font-size: 10px; line-height: 1.2; }
+              .font-bold { font-weight: bold; }
+              .double-divider {
+                margin: 6px 0;
+                border-top: 2px double #000;
+              }
+              .dash-divider {
+                margin: 6px 0;
+                border-top: 1px dashed #000;
+              }
+              table { width: 100%; border-collapse: collapse; }
+              td, th { padding: 2px 0; vertical-align: top; }
             </style>
           </head>
           <body>
-            <div class="text-center border-b pb-2 mb-2">
-              ${restaurantLogo ? `<img src="${restaurantLogo}" style="max-height: 40px; margin-bottom: 5px; display: inline-block;" />` : ''}
-              <div style="font-size: 15px; font-weight: bold;">${restaurantName}</div>
+            <div class="double-divider"></div>
+            <div class="text-center">
+              ${restaurantLogo ? `<img src="${restaurantLogo}" style="max-height: 35px; margin-bottom: 4px; display: block; margin-left: auto; margin-right: auto;" />` : ''}
+              <div style="font-size: 15px; font-weight: bold;">🍽 ${restaurantName.toUpperCase()}</div>
               ${settings?.address ? `<div style="font-size: 10px; margin-top: 2px;">${settings.address}</div>` : ''}
-              ${settings?.phone ? `<div style="font-size: 10px;">Tel: ${settings.phone}</div>` : ''}
-              <div style="font-size: 12px; font-weight: bold; margin-top: 5px; border: 1px solid black; display: inline-block; padding: 2px 6px; text-transform: uppercase;">
-                ${order.billing?.order_type?.replace('_', ' ') || 'dine in'} Bill
-              </div>
-              <div style="margin-top: 5px; font-size: 11px; font-weight: bold;">Order: #${order.order_number || order.id.slice(0, 8)}</div>
-              <div style="font-size: 11px;">Date: ${new Date(order.timestamp).toLocaleString()}</div>
-              ${order.billing?.confirmedBy ? `<div style="font-size: 11px;">Staff: ${order.billing.confirmedBy}</div>` : ''}
-              ${order.table_name || order.table ? `
-                <div style="font-size: 12px; font-weight: bold; margin-top: 2px;">
-                  ${['Take Away', 'Delivery'].includes(order.table_name || order.table)
-                    ? (order.table_name || order.table)
-                    : `Table: ${order.table_name || order.table}`}
-                </div>
-              ` : ''}
+              ${settings?.phone ? `<div style="font-size: 10px;">${settings.phone}</div>` : ''}
             </div>
-            
-            <table style="margin-bottom: 8px;">
+            <div class="double-divider"></div>
+
+            <table>
+              <tr>
+                <td style="width: 80px;">Receipt #:</td>
+                <td class="font-bold">${formatOrderId(order)}</td>
+              </tr>
+              <tr>
+                <td>Date     :</td>
+                <td>${formatReceiptDate(order.timestamp || order.created_at)}</td>
+              </tr>
+              ${['takeaway', 'delivery'].includes(order.order_type) || ['Take Away', 'Delivery'].includes(order.table_name || order.table) ? `
+                <tr>
+                  <td>Type     :</td>
+                  <td class="font-bold">${order.order_type === 'takeaway' || (order.table_name || order.table) === 'Take Away' ? 'Take Away' : 'Delivery'}</td>
+                </tr>
+              ` : `
+                <tr>
+                  <td>Table    :</td>
+                  <td class="font-bold">T-${String(order.table_name || order.table || '').replace(/Table\s*/i, '').padStart(2, '0')}</td>
+                </tr>
+              `}
+              <tr>
+                <td>Cashier  :</td>
+                <td>${order.billing?.confirmedBy || user?.displayName || 'Staff'}</td>
+              </tr>
+            </table>
+
+            <div class="dash-divider"></div>
+
+            <table>
               <thead>
-                <tr style="border-bottom: 1px solid black; font-size: 11px;">
-                  <th>Item</th>
-                  <th class="text-center-align" style="width: 35px;">Qty</th>
-                  <th class="text-right" style="width: 65px;">Amount</th>
+                <tr style="border-bottom: 1px dashed #000; font-weight: bold;">
+                  <td style="width: 30px;">Qty</td>
+                  <td>Item</td>
+                  <td class="text-right" style="width: 80px;">Total</td>
                 </tr>
               </thead>
               <tbody>
-                ${order.items.map(item => `
+                ${(order.items || []).map(item => `
                   <tr>
-                    <td style="font-size: 11px;">${item.name}</td>
-                    <td class="text-center-align" style="font-size: 11px;">${item.quantity}</td>
-                    <td class="text-right" style="font-size: 11px;">Rs ${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.name}</td>
+                    <td class="text-right">${formatCurrency(item.price * item.quantity)}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
 
-            <div class="totals-box">
-              <div class="flex-row">
-                <span>Subtotal:</span>
-                <span>Rs ${order.billing.subtotal.toFixed(2)}</span>
-              </div>
-              <div class="flex-row">
-                <span>Taxes (8%):</span>
-                <span>Rs ${order.billing.tax.toFixed(2)}</span>
-              </div>
-              <div class="flex-row">
-                <span>Service Charge (5%):</span>
-                <span>Rs ${order.billing.serviceCharge.toFixed(2)}</span>
-              </div>
-              ${order.billing.discount > 0 ? `
-                <div class="flex-row" style="color: red;">
-                  <span>Discount:</span>
-                  <span>- Rs ${order.billing.discount.toFixed(2)}</span>
-                </div>
-              ` : ''}
-              <div class="flex-row grand-total">
-                <span>GRAND TOTAL:</span>
-                <span>Rs ${order.billing.total.toFixed(2)}</span>
-              </div>
-              ${order.billing.paymentStatus === 'pending' ? `
-                <div class="flex-row" style="font-weight: bold; color: #d97706; border-top: 1px dashed black; padding-top: 2px; margin-top: 2px;">
-                  <span>PENDING AMOUNT:</span>
-                  <span>Rs ${order.billing.pendingAmount.toFixed(2)}</span>
-                </div>
-              ` : ''}
-            </div>
+            <div class="dash-divider"></div>
 
-            ${order.order_type === 'delivery' ? `
-              <div class="delivery-box">
-                <div style="font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">Delivery Address</div>
-                <div>Name: ${order.billing.customerName}</div>
-                <div>Phone: ${order.billing.customerPhone}</div>
-                <div>Address: ${order.billing.deliveryAddress}, ${order.billing.deliveryArea}, ${order.billing.deliveryCity}</div>
-                ${order.billing.deliveryInstructions ? `<div>Instructions: ${order.billing.deliveryInstructions}</div>` : ''}
-                ${order.billing.rider ? `<div>Rider: ${order.billing.rider.name || order.billing.rider.display_name}</div>` : ''}
-              </div>
+            <table>
+              <tr>
+                <td>Subtotal</td>
+                <td class="text-right">${formatCurrency(order.billing?.subtotal || 0)}</td>
+              </tr>
+              ${order.billing?.discount > 0 ? `
+                <tr>
+                  <td>Discount</td>
+                  <td class="text-right">- ${formatCurrency(order.billing.discount)}</td>
+                </tr>
+              ` : ''}
+              ${order.billing?.tax !== undefined ? `
+                <tr>
+                  <td>GST (${settings?.tax_rate || 8}%)</td>
+                  <td class="text-right">${formatCurrency(order.billing.tax)}</td>
+                </tr>
+              ` : ''}
+              ${order.billing?.serviceCharge > 0 ? `
+                <tr>
+                  <td>Service Charge</td>
+                  <td class="text-right">${formatCurrency(order.billing.serviceCharge)}</td>
+                </tr>
+              ` : ''}
+            </table>
+
+            <div class="double-divider"></div>
+            <table style="font-size: 14px; font-weight: bold;">
+              <tr>
+                <td>TOTAL</td>
+                <td class="text-right">${formatCurrency(order.billing?.total || 0)}</td>
+              </tr>
+            </table>
+            <div class="double-divider"></div>
+
+            <table>
+              <tr>
+                <td style="width: 80px;">Payment :</td>
+                <td class="font-bold" style="text-transform: capitalize;">${order.billing?.paymentMethod || 'Cash'}</td>
+              </tr>
+              ${order.billing?.amountPaid ? `
+                <tr>
+                  <td>Paid    :</td>
+                  <td>${formatCurrency(order.billing.amountPaid)}</td>
+                </tr>
+                <tr>
+                  <td>Change  :</td>
+                  <td>${formatCurrency(order.billing.amountPaid - (order.billing?.total || 0))}</td>
+                </tr>
+              ` : ''}
+            </table>
+
+            ${order.order_type === 'delivery' || (order.table_name || order.table) === 'Delivery' ? `
+              <div class="dash-divider"></div>
+              <table>
+                <tr style="font-weight: bold;"><td colSpan="2">DELIVERY INFORMATION</td></tr>
+                ${order.billing?.customerName ? `<tr><td style="width: 80px;">Customer :</td><td>${order.billing.customerName}</td></tr>` : ''}
+                ${order.billing?.customerPhone ? `<tr><td style="width: 80px;">Phone    :</td><td>${order.billing.customerPhone}</td></tr>` : ''}
+                ${order.billing?.deliveryAddress ? `<tr><td style="width: 80px;">Address  :</td><td>${order.billing.deliveryAddress}${order.billing?.deliveryArea ? ', ' + order.billing.deliveryArea : ''}${order.billing?.deliveryCity ? ', ' + order.billing.deliveryCity : ''}</td></tr>` : ''}
+                ${order.billing?.deliveryInstructions ? `<tr><td style="width: 80px;">Notes    :</td><td>${order.billing.deliveryInstructions}</td></tr>` : ''}
+                ${order.billing?.rider ? `
+                  <tr>
+                    <td style="width: 80px;">Rider    :</td>
+                    <td class="font-bold">${order.billing.rider.name || order.billing.rider.displayName || order.billing.rider.display_name} ${order.billing.rider.phone ? '(' + order.billing.rider.phone + ')' : ''}</td>
+                  </tr>
+                ` : ''}
+              </table>
             ` : ''}
 
-            <div class="text-center" style="border-top: 1px dashed black; margin-top: 8px; padding-top: 4px; font-size: 10px;">
-              Thank you for dining with us!
+            <div class="double-divider"></div>
+            <div class="text-center font-bold" style="margin: 10px 0;">
+              Thank You for Dining With Us!
             </div>
+            <div class="double-divider"></div>
           </body>
         </html>
       `;
@@ -747,6 +803,14 @@ export default function WaiterView() {
     return occupied;
   };
 
+  const formatTableDisplay = (val) => {
+    if (!val) return '';
+    const str = String(val).trim();
+    if (['Take Away', 'Delivery'].includes(str)) return str;
+    const cleanNum = str.replace(/^(table\s*)+/i, '').trim();
+    return cleanNum ? `Table ${cleanNum}` : str;
+  };
+
   // Calculate rider pending balances from live orders (any order with status !== 'completed' && status !== 'cancelled' and order_type === 'delivery' and paymentStatus === 'pending')
   const getRiderPendingBalances = () => {
     const balances = {};
@@ -929,10 +993,10 @@ export default function WaiterView() {
                           )}
                         </div>
                         <span className="text-[8px] font-black uppercase text-zinc-400 tracking-wider mb-0.5 block truncate">{item.category}</span>
-                        <h4 className="font-bold text-[10px] text-[#2B2D42] line-clamp-2 leading-tight">{item.name}</h4>
+                        <h4 className="font-bold text-xs text-[#2B2D42] line-clamp-2 leading-tight">{item.name}</h4>
                       </div>
                       <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-zinc-100">
-                        <span className="font-extrabold text-[10px] text-black">Rs {item.price.toFixed(0)}</span>
+                        <span className="font-extrabold text-[11px] text-black">Rs {item.price.toFixed(0)}</span>
                         {item.is_available && (
                           <span className="h-4 w-4 rounded bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[10px] font-bold group-hover:bg-black group-hover:text-white transition-colors">+</span>
                         )}
@@ -1096,30 +1160,28 @@ export default function WaiterView() {
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-col sm:flex-row gap-3">
                           <div className="flex-1">
-                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Customer Name</label>
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Customer Name (Optional)</label>
                             <input
                               type="text"
-                              required
                               value={manualCustomerName}
                               onChange={(e) => setManualCustomerName(e.target.value)}
-                              placeholder="e.g. Ali"
+                              placeholder="e.g. Ali (Optional)"
                               className="w-full p-2.5 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:border-black text-black"
                             />
                           </div>
                           <div className="flex-1">
-                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Phone Number</label>
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Phone Number (Optional)</label>
                             <input
                               type="tel"
-                              required
                               value={manualCustomerPhone}
                               onChange={(e) => setManualCustomerPhone(e.target.value)}
-                              placeholder="e.g. 03001234567"
+                              placeholder="e.g. 03001234567 (Optional)"
                               className="w-full p-2.5 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:border-black text-black"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Estimated Pickup Time</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Estimated Pickup Time (Optional)</label>
                           <input
                             type="time"
                             value={manualPickupTime}
@@ -1469,7 +1531,7 @@ export default function WaiterView() {
                     <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                       <div>
                         <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                          <span className="text-black font-bold text-sm">{['Take Away', 'Delivery'].includes(order.table_name || order.table) ? (order.table_name || order.table) : `Table ${order.table_name || order.table}`}</span>
+                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
                           <div className="flex flex-wrap items-center gap-1">
                             {getOrderBadges(order).map((b, idx) => (
                               <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1537,7 +1599,7 @@ export default function WaiterView() {
                     <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                       <div>
                         <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                          <span className="text-black font-bold text-sm">{['Take Away', 'Delivery'].includes(order.table_name || order.table) ? (order.table_name || order.table) : `Table ${order.table_name || order.table}`}</span>
+                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
                           <div className="flex flex-wrap items-center gap-1">
                             {getOrderBadges(order).map((b, idx) => (
                               <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1603,7 +1665,7 @@ export default function WaiterView() {
                     <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                       <div>
                         <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                          <span className="text-black font-bold text-sm">{['Take Away', 'Delivery'].includes(order.table_name || order.table) ? (order.table_name || order.table) : `Table ${order.table_name || order.table}`}</span>
+                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
                           <div className="flex flex-wrap items-center gap-1">
                             {getOrderBadges(order).map((b, idx) => (
                               <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1723,7 +1785,7 @@ export default function WaiterView() {
                   <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                     <div>
                       <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                        <span className="text-black font-bold text-sm">{['Take Away', 'Delivery'].includes(order.table_name || order.table) ? (order.table_name || order.table) : `Table ${order.table_name || order.table}`}</span>
+                        <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
                         <div className="flex flex-wrap items-center gap-1">
                           {getOrderBadges(order).map((b, idx) => (
                             <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1794,8 +1856,6 @@ export default function WaiterView() {
                   <tr>
                     <th className="px-5 py-3.5 border-b border-zinc-200">Order ID</th>
                     <th className="px-5 py-3.5 border-b border-zinc-200">Table</th>
-                    <th className="px-5 py-3.5 border-b border-zinc-200">Items</th>
-                    <th className="px-5 py-3.5 border-b border-zinc-200">Tax</th>
                     <th className="px-5 py-3.5 border-b border-zinc-200">Total</th>
                     <th className="px-5 py-3.5 border-b border-zinc-200">Status</th>
                     <th className="px-5 py-3.5 border-b border-zinc-200">Payment</th>
@@ -1806,19 +1866,17 @@ export default function WaiterView() {
                 <tbody className="divide-y divide-zinc-100">
                   {filteredHistory.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="px-5 py-8 text-center text-zinc-500 italic border-b border-zinc-100">No historical orders found.</td>
+                      <td colSpan="7" className="px-5 py-8 text-center text-zinc-500 italic border-b border-zinc-100">No historical orders found.</td>
                     </tr>
                   ) : (
                     filteredHistory.map(order => (
                       <tr key={order.id} className="bg-white hover:bg-zinc-50 transition-colors">
-                        <td className="px-5 py-3.5 font-bold text-black border-b border-zinc-100">
-                          {order.order_number ? `#${order.order_number}` : order.id.slice(0, 8)}
+                        <td className="px-5 py-3.5 font-bold font-mono text-black border-b border-zinc-100">
+                          {formatOrderId(order)}
                         </td>
                         <td className="px-5 py-3.5 font-bold text-black border-b border-zinc-100">
                            <div>
-                             {['Take Away', 'Delivery'].includes(order.table_name || order.table)
-                               ? (order.table_name || order.table)
-                               : `Table ${order.table_name || order.table}`}
+                             {formatTableDisplay(order.table_name || order.table)}
                            </div>
                            <div className="flex flex-wrap gap-1 mt-1.5">
                              {getOrderBadges(order).map((b, idx) => (
@@ -1828,10 +1886,6 @@ export default function WaiterView() {
                              ))}
                            </div>
                         </td>
-                        <td className="px-5 py-3.5 max-w-[240px] truncate border-b border-zinc-100 text-zinc-600" title={order.items.map(i => `${i.name} (x${i.quantity})`).join(', ')}>
-                          {order.items.map(i => `${i.name} (${i.quantity})`).join(', ')}
-                        </td>
-                        <td className="px-5 py-3.5 font-semibold text-black border-b border-zinc-100">Rs {order.billing.tax ? order.billing.tax.toFixed(2) : '0.00'}</td>
                         <td className="px-5 py-3.5 font-bold text-black border-b border-zinc-100">Rs {order.billing.total.toFixed(2)}</td>
                         <td className="px-5 py-3.5 border-b border-zinc-100">
                           <span className={`px-2 py-0.5 text-[0.7rem] font-bold border border-zinc-200 rounded-lg ${
@@ -1876,8 +1930,8 @@ export default function WaiterView() {
               <div className="flex justify-between items-center border-b border-zinc-100 pb-4 mb-5">
                 <div>
                   <h2 className="text-lg font-bold text-black leading-none">Edit Order Items</h2>
-                  <span className="text-zinc-400 font-mono text-xs">
-                    {editOrder.order_number ? `#${editOrder.order_number}` : editOrder.id.slice(0, 8)}
+                  <span className="text-zinc-500 font-mono text-xs font-bold mt-1 block">
+                    {formatOrderId(editOrder)}
                   </span>
                 </div>
                 <button onClick={() => setIsEditModalOpen(false)} className="text-2xl text-zinc-400 hover:text-black transition-colors">✕</button>
@@ -1959,84 +2013,160 @@ export default function WaiterView() {
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-5 print:p-0 print:bg-white print:text-black">
             <div className="bg-white border border-zinc-200 w-full max-w-[480px] p-6 rounded-2xl shadow-xl print:border-none print:shadow-none print:p-0 print:bg-white print:max-w-full">
               <div className="flex justify-between items-center border-b border-zinc-100 pb-4 mb-5 print:hidden">
-                <h2 className="text-lg font-bold text-black">Order #{billingOrder.order_number || billingOrder.id.slice(0, 4)}</h2>
+                <h2 className="text-base font-bold text-black font-mono">{formatOrderId(billingOrder)}</h2>
                 <button onClick={() => setIsBillingModalOpen(false)} className="text-2xl text-zinc-400 hover:text-black transition-colors">✕</button>
               </div>
 
-              {/* Paper Thermal Receipt ticket print output block */}
-              <div id="receipt-details" className="bg-zinc-50/50 text-black p-6 font-mono text-sm border border-zinc-200 flex flex-col gap-2 mb-5 print:p-0 print:bg-white print:border-none rounded-xl">
-                <div className="text-center border-b border-dashed border-zinc-200 pb-3 mb-3">
-                  <div className="text-lg font-bold tracking-wider text-black flex flex-col items-center gap-1">
-                    {user?.restaurantLogo && (
-                      <img src={user.restaurantLogo} className="h-8 w-auto object-contain mb-1 print:block border border-zinc-200 p-0.5 rounded-lg" alt={user.restaurantName} />
-                    )}
-                    <span className="font-bold">{user?.restaurantName || 'Apex Scan'}</span>
+              {/* Paper Thermal Receipt ticket block */}
+              <div id="receipt-details" className="bg-white text-black p-5 font-mono text-xs border border-zinc-300 flex flex-col gap-2 mb-5 rounded-xl shadow-inner print:border-none print:shadow-none print:p-0">
+                <div className="border-t-2 border-b-2 border-double border-black py-2 text-center">
+                  {user?.restaurantLogo && (
+                    <img src={user.restaurantLogo} className="h-8 w-auto object-contain mx-auto mb-1 print:block border border-zinc-200 p-0.5 rounded-lg" alt={user.restaurantName} />
+                  )}
+                  <div className="text-base font-bold tracking-wider text-black">
+                    🍽 {(user?.restaurantName || 'Apex Scan').toUpperCase()}
                   </div>
-                  <div className="text-xs text-zinc-500 mt-1">
-                    {['Take Away', 'Delivery'].includes(billingOrder.table)
-                      ? `Receipt for ${billingOrder.table}`
-                      : `Receipt for Table ${billingOrder.table}`}
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-1">
-                    <p className="text-xs">Date: {new Date(billingOrder.timestamp).toLocaleString()}</p>
-                    {billingOrder.billing?.confirmedBy && (
-                      <p className="text-xs font-bold mt-1 text-black">Sales Rep: {billingOrder.billing.confirmedBy}</p>
-                    )}
-                  </div>
+                  {user?.restaurantAddress && (
+                    <div className="text-[11px] text-zinc-600 mt-0.5">{user.restaurantAddress}</div>
+                  )}
+                  {user?.restaurantPhone && (
+                    <div className="text-[11px] text-zinc-600">{user.restaurantPhone}</div>
+                  )}
                 </div>
 
-                <div className="flex flex-col gap-2 border-b border-dashed border-zinc-200 pb-3 mb-3">
-                  {billingOrder.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-xs text-zinc-800">
-                      <span>{item.name} x{item.quantity}</span>
-                      <span>Rs {(item.price * item.quantity).toFixed(2)}</span>
+                <div className="grid grid-cols-[85px_1fr] gap-x-2 gap-y-1 text-xs my-1">
+                  <span className="text-zinc-500">Receipt #:</span>
+                  <span className="font-bold text-black font-mono">{formatOrderId(billingOrder)}</span>
+                  <span className="text-zinc-500">Date     :</span>
+                  <span className="font-semibold text-black">{formatReceiptDate(billingOrder.timestamp || billingOrder.created_at)}</span>
+                  {['takeaway', 'delivery'].includes(billingOrder.order_type) || ['Take Away', 'Delivery'].includes(billingOrder.table_name || billingOrder.table) ? (
+                    <>
+                      <span className="text-zinc-500">Type     :</span>
+                      <span className="font-bold text-black uppercase">
+                        {billingOrder.order_type === 'takeaway' || (billingOrder.table_name || billingOrder.table) === 'Take Away' ? 'Take Away' : 'Delivery'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-zinc-500">Table    :</span>
+                      <span className="font-bold text-black">
+                        {`T-${String(billingOrder.table_name || billingOrder.table || '').replace(/Table\s*/i, '').padStart(2, '0')}`}
+                      </span>
+                    </>
+                  )}
+                  <span className="text-zinc-500">Cashier  :</span>
+                  <span className="font-semibold text-black">{billingOrder.billing?.confirmedBy || user?.displayName || 'Staff'}</span>
+                </div>
+
+                <div className="border-t border-dashed border-black my-1"></div>
+
+                {/* Items list */}
+                <div className="flex flex-col gap-1.5 my-1">
+                  <div className="grid grid-cols-[30px_1fr_90px] font-bold text-xs border-b border-dashed border-black pb-1 mb-1">
+                    <span>Qty</span>
+                    <span>Item</span>
+                    <span className="text-right">Total</span>
+                  </div>
+                  {billingOrder.items?.map((item, idx) => (
+                    <div key={idx} className="grid grid-cols-[30px_1fr_90px] text-xs">
+                      <span className="font-semibold">{item.quantity}</span>
+                      <span className="truncate pr-1">{item.name}</span>
+                      <span className="text-right font-mono">{formatCurrency(item.price * item.quantity)}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex flex-col gap-1.5 text-xs text-zinc-600">
+                <div className="border-t border-dashed border-black my-1"></div>
+
+                {/* Totals */}
+                <div className="flex flex-col gap-1 text-xs">
                   <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>Rs {billingOrder.billing.subtotal.toFixed(2)}</span>
+                    <span>Subtotal</span>
+                    <span className="font-mono">{formatCurrency(billingOrder.billing?.subtotal || 0)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Taxes (8%):</span>
-                    <span>Rs {billingOrder.billing.tax.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Service Charge (5%):</span>
-                    <span>Rs {billingOrder.billing.serviceCharge.toFixed(2)}</span>
-                  </div>
-                  {billingOrder.billing.discount > 0 && (
+                  {billingOrder.billing?.discount > 0 && (
                     <div className="flex justify-between text-rose-600">
-                      <span>Discount:</span>
-                      <span>- Rs {billingOrder.billing.discount.toFixed(2)}</span>
+                      <span>Discount</span>
+                      <span className="font-mono">- {formatCurrency(billingOrder.billing.discount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-base font-bold text-black border-t border-zinc-200 pt-2.5 mt-2">
-                    <span>GRAND TOTAL:</span>
-                    <span>Rs {billingOrder.billing.total.toFixed(2)}</span>
+                  {billingOrder.billing?.tax !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Tax / GST</span>
+                      <span className="font-mono">{formatCurrency(billingOrder.billing.tax)}</span>
+                    </div>
+                  )}
+                  {billingOrder.billing?.serviceCharge > 0 && (
+                    <div className="flex justify-between">
+                      <span>Service Charge</span>
+                      <span className="font-mono">{formatCurrency(billingOrder.billing.serviceCharge)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t-2 border-b-2 border-double border-black py-2 my-1 flex justify-between text-sm font-bold text-black">
+                  <span>TOTAL</span>
+                  <span className="font-mono">{formatCurrency(billingOrder.billing?.total || 0)}</span>
+                </div>
+
+                {/* Payment */}
+                <div className="flex flex-col gap-1 text-xs my-1">
+                  <div className="flex justify-between">
+                    <span>Payment :</span>
+                    <span className="font-bold uppercase">{billingOrder.billing?.paymentMethod || 'Cash'}</span>
                   </div>
-                  {billingOrder.billing.paymentStatus === 'pending' && (
-                    <div className="flex justify-between font-bold text-amber-600 border-t border-dashed border-zinc-200 pt-1 mt-1">
-                      <span>PENDING BALANCE:</span>
-                      <span>Rs {billingOrder.billing.pendingAmount.toFixed(2)}</span>
-                    </div>
+                  {billingOrder.billing?.amountPaid && (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Paid    :</span>
+                        <span className="font-mono">{formatCurrency(billingOrder.billing.amountPaid)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Change  :</span>
+                        <span className="font-mono">{formatCurrency(billingOrder.billing.amountPaid - (billingOrder.billing?.total || 0))}</span>
+                      </div>
+                    </>
                   )}
-                  {billingOrder.order_type === 'delivery' && (
-                    <div className="border-t border-zinc-200 pt-2.5 mt-2.5 text-xs text-zinc-700 flex flex-col gap-1 text-left">
-                      <p className="font-bold text-black uppercase tracking-wider text-[10px] mb-1">Delivery Information</p>
-                      <p>Name: <span className="font-semibold text-black">{billingOrder.billing.customerName}</span></p>
-                      <p>Phone: <span className="font-semibold text-black">{billingOrder.billing.customerPhone}</span></p>
-                      <p>Address: <span className="font-semibold text-black">{billingOrder.billing.deliveryAddress}, {billingOrder.billing.deliveryArea}, {billingOrder.billing.deliveryCity}</span></p>
-                      {billingOrder.billing.deliveryInstructions && (
-                        <p className="italic">Note: "{billingOrder.billing.deliveryInstructions}"</p>
-                      )}
-                      {billingOrder.billing.rider && (
-                        <p className="font-bold text-black mt-1">Rider Assigned: {billingOrder.billing.rider.name || billingOrder.billing.rider.display_name} ({billingOrder.billing.rider.phone || billingOrder.billing.rider.employee_code})</p>
-                      )}
-                    </div>
-                  )}
+                </div>
+
+                {(billingOrder.order_type === 'delivery' || (billingOrder.table_name || billingOrder.table) === 'Delivery') && (
+                  <div className="border-t border-dashed border-black pt-2 mt-1 text-xs text-zinc-800 flex flex-col gap-1">
+                    <div className="font-bold uppercase tracking-wider text-[10px] text-black border-b border-zinc-200 pb-1 mb-1">Delivery Information</div>
+                    {billingOrder.billing?.customerName && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Customer :</span>
+                        <span className="font-semibold">{billingOrder.billing.customerName}</span>
+                      </div>
+                    )}
+                    {billingOrder.billing?.customerPhone && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Phone    :</span>
+                        <span className="font-semibold">{billingOrder.billing.customerPhone}</span>
+                      </div>
+                    )}
+                    {billingOrder.billing?.deliveryAddress && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Address  :</span>
+                        <span className="font-semibold text-right max-w-[240px]">{billingOrder.billing.deliveryAddress}{billingOrder.billing?.deliveryArea ? `, ${billingOrder.billing.deliveryArea}` : ''}{billingOrder.billing?.deliveryCity ? `, ${billingOrder.billing.deliveryCity}` : ''}</span>
+                      </div>
+                    )}
+                    {billingOrder.billing?.deliveryInstructions && (
+                      <div className="flex justify-between italic text-zinc-600">
+                        <span>Notes    :</span>
+                        <span>"{billingOrder.billing.deliveryInstructions}"</span>
+                      </div>
+                    )}
+                    {billingOrder.billing?.rider && (
+                      <div className="flex justify-between font-bold text-black border-t border-zinc-200 pt-1 mt-1">
+                        <span>Rider    :</span>
+                        <span>{billingOrder.billing.rider.name || billingOrder.billing.rider.displayName || billingOrder.billing.rider.display_name} {billingOrder.billing.rider.phone ? `(${billingOrder.billing.rider.phone})` : ''}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="border-t-2 border-b-2 border-double border-black py-2 my-1 text-center font-bold text-xs text-black">
+                  Thank You for Dining With Us!
                 </div>
               </div>
 

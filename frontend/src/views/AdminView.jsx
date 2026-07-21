@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 
 import { API_URL } from '../utils/config';
+import { formatOrderId, formatReceiptDate } from '../utils/formatters';
+import { generateTableCodeFallback } from '../utils/customerConstants';
 
 const BACKEND_URL = API_URL;
 
@@ -62,6 +64,9 @@ export default function AdminView() {
 
   // ─── QR State ───
   const [tableCount, setTableCount] = useState(10);
+  const [tableCodesMap, setTableCodesMap] = useState({});
+  const [confirmRegenTable, setConfirmRegenTable] = useState(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // ─── Staff State ───
   const [staffList, setStaffList] = useState([]);
@@ -259,6 +264,169 @@ export default function AdminView() {
     setSettingsSaving(false);
   };
 
+  const fetchTableCodes = async () => {
+    const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant') || 'cheezious';
+    const fallbackMap = {};
+    for (let i = 1; i <= tableCount; i++) {
+      fallbackMap[i] = generateTableCodeFallback(i, slug);
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/qr/tables?restaurant=${slug}&count=${tableCount}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const map = {};
+          data.data.forEach((item) => {
+            map[item.tableNumber] = item.tableCode;
+          });
+          setTableCodesMap(map);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend QR batch endpoint pending restart, using fallback table codes:', e.message);
+    }
+    setTableCodesMap(fallbackMap);
+  };
+
+  const handleRegenerateCode = async (tableNum) => {
+    const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant') || 'default';
+    setIsRegenerating(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/qr/regenerate`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ table: tableNum, restaurant: slug })
+      });
+      const result = await res.json();
+      if (result.success && result.data?.tableCode) {
+        setTableCodesMap(prev => ({ ...prev, [tableNum]: result.data.tableCode }));
+        toast.success(`Regenerated code for Table ${tableNum}: ${result.data.tableCode}`);
+        setConfirmRegenTable(null);
+      } else {
+        toast.error(result.message || 'Failed to regenerate code');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error regenerating table code');
+    }
+    setIsRegenerating(false);
+  };
+
+  const printSingleQr = (tableNum) => {
+    const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant') || 'default';
+    const code = tableCodesMap[tableNum] || 'PENDING';
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    const qrUrl = `${protocol}//${host}/r/${slug}/customer?table=${code}`;
+    const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`;
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      toast.error('Pop-up blocked. Please allow pop-ups to print QR codes.');
+      return;
+    }
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Table ${tableNum} - QR Stand</title>
+          <style>
+            body { font-family: 'Inter', system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fafafa; }
+            .card { background: white; border: 2px solid #111; padding: 40px; border-radius: 28px; text-align: center; width: 320px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
+            .brand { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #666; margin-bottom: 8px; }
+            .table-title { font-size: 32px; font-weight: 900; color: #111; margin: 0 0 20px 0; }
+            .qr-frame { background: #fff; border: 1px solid #eee; padding: 16px; border-radius: 20px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+            img { width: 220px; height: 220px; display: block; }
+            .code-badge { margin-top: 20px; font-family: monospace; font-size: 20px; font-weight: 800; background: #111; color: #fff; padding: 8px 20px; border-radius: 12px; display: inline-block; letter-spacing: 3px; }
+            .instruction { margin-top: 18px; font-size: 12px; font-weight: 600; color: #666; line-height: 1.4; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="brand">${user?.restaurantName || 'Smart QR System'}</div>
+            <h1 class="table-title">Table ${tableNum}</h1>
+            <div class="qr-frame">
+              <img src="${qrImgUrl}" alt="QR Code" />
+            </div>
+            <br />
+            <div class="code-badge">${code}</div>
+            <p class="instruction">Scan QR code with your smartphone camera to view menu & place your order.</p>
+          </div>
+          <script>
+            window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
+  const printAllQrs = () => {
+    const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant') || 'default';
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+
+    const cardsHtml = Array.from({ length: tableCount }, (_, i) => i + 1).map(tableNum => {
+      const code = tableCodesMap[tableNum] || 'PENDING';
+      const qrUrl = `${protocol}//${host}/r/${slug}/customer?table=${code}`;
+      const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+      return `
+        <div class="card">
+          <div class="brand">${user?.restaurantName || 'Smart QR System'}</div>
+          <h1 class="table-title">Table ${tableNum}</h1>
+          <div class="qr-frame">
+            <img src="${qrImgUrl}" alt="QR Code" />
+          </div>
+          <br />
+          <div class="code-badge">${code}</div>
+          <p class="instruction">Scan QR code to order</p>
+        </div>
+      `;
+    }).join('');
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      toast.error('Pop-up blocked. Please allow pop-ups to print QR codes.');
+      return;
+    }
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>All Table QR Stands</title>
+          <style>
+            body { font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 20px; background: white; }
+            .grid { display: grid; grid-template-cols: repeat(2, 1fr); gap: 30px; }
+            .card { page-break-inside: avoid; border: 2px solid #111; padding: 24px; border-radius: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+            .brand { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #666; margin-bottom: 4px; }
+            .table-title { font-size: 24px; font-weight: 900; color: #111; margin: 0 0 14px 0; }
+            .qr-frame { background: #fff; border: 1px solid #eee; padding: 12px; border-radius: 16px; display: inline-block; }
+            img { width: 170px; height: 170px; display: block; }
+            .code-badge { margin-top: 14px; font-family: monospace; font-size: 16px; font-weight: 800; background: #111; color: #fff; padding: 6px 16px; border-radius: 10px; display: inline-block; letter-spacing: 2px; }
+            .instruction { margin-top: 10px; font-size: 11px; font-weight: 600; color: #666; }
+            @media print {
+              .grid { grid-template-cols: repeat(2, 1fr); }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="grid">
+            ${cardsHtml}
+          </div>
+          <script>
+            window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 600); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
   useEffect(() => {
     loadMenu();
     loadOrders();
@@ -266,6 +434,12 @@ export default function AdminView() {
     loadStaff();
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'qr') {
+      fetchTableCodes();
+    }
+  }, [activeTab, tableCount]);
 
   // ╔═══════════════════════════════════════╗
   // ║          MENU CRUD HANDLERS           ║
@@ -528,72 +702,7 @@ export default function AdminView() {
     }
   };
 
-  // ╔═══════════════════════════════════════╗
-  // ║          QR CODE HELPERS              ║
-  // ╚═══════════════════════════════════════╝
-  const getQrUrl = (tableNum) => {
-    const target = `${window.location.origin}/r/${user?.restaurantSlug || 'default'}/customer?table=${tableNum}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=000000&bgcolor=ffffff&qzone=2&data=${encodeURIComponent(target)}`;
-  };
 
-  const printSingleQr = (tableNum) => {
-    const url = getQrUrl(tableNum);
-    const target = `${window.location.origin}/r/${user?.restaurantSlug || 'default'}/customer?table=${tableNum}`;
-    const win = window.open('', '_blank', 'width=400,height=600');
-    win.document.write(`
-      <html>
-        <head><title>QR Code - Table ${tableNum}</title>
-          <style>
-            body { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:'Outfit',sans-serif; margin:0; }
-            h1 { font-size:28px; color:#2B2D42; margin-bottom:4px; }
-            h2 { font-size:16px; color:#E63946; margin-bottom:24px; font-weight:600; }
-            img { border:2px solid #f0f0f0; border-radius:16px; padding:12px; }
-            p { font-size:11px; color:#999; margin-top:16px; word-break:break-all; max-width:300px; text-align:center; }
-          </style>
-        </head>
-        <body>
-          <h1>${user?.restaurantName || 'Gourmet Bistro'}</h1>
-          <h2>Table ${tableNum}</h2>
-          <img src="${url}" width="250" height="250" />
-          <p>Scan to order: ${target}</p>
-        </body>
-      </html>
-    `);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
-  };
-
-  const printAllQrs = () => {
-    const cards = Array.from({ length: tableCount }, (_, i) => i + 1).map(num => {
-      const target = `${window.location.origin}/r/${user?.restaurantSlug || 'default'}/customer?table=${num}`;
-      return `
-        <div style="display:flex;flex-direction:column;align-items:center;padding:24px;border:1px solid #eee;border-radius:12px;">
-          <h3 style="margin:0 0 4px;font-size:18px;color:#2B2D42;">Table ${num}</h3>
-          <img src="${getQrUrl(num)}" width="180" height="180" style="margin:8px 0;" />
-          <p style="font-size:9px;color:#999;margin:0;word-break:break-all;max-width:200px;text-align:center;">${target}</p>
-        </div>
-      `;
-    }).join('');
-
-    const win = window.open('', '_blank', 'width=900,height=700');
-    win.document.write(`
-      <html>
-        <head><title>All QR Codes - Gourmet Bistro</title>
-          <style>
-            body { font-family:'Outfit',sans-serif; margin:20px; }
-            h1 { text-align:center; color:#2B2D42; }
-            .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; }
-          </style>
-        </head>
-        <body>
-          <h1>Gourmet Bistro — Table QR Codes</h1>
-          <div class="grid">${cards}</div>
-        </body>
-      </html>
-    `);
-    win.document.close();
-    setTimeout(() => win.print(), 1000);
-  };
 
   // ╔═══════════════════════════════════════╗
   // ║          FILTERED DATA                ║
@@ -624,53 +733,87 @@ export default function AdminView() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F9F9F9] text-[#2B2D42]">
+    <div className="min-h-screen bg-[#F9F9F9] text-[#2B2D42] flex">
 
-      {/* ── Top Header Bar ── */}
-      <header className="bg-white border-b border-slate-200 shadow-sm px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {user?.restaurantLogo ? (
-            <img src={user.restaurantLogo} className="h-8 w-auto object-contain rounded-lg border border-slate-105 p-0.5" alt={user.restaurantName} />
-          ) : (
-            <LayoutDashboard size={22} className="text-[#E63946]" />
-          )}
-          <h1 className="text-xl font-bold tracking-tight text-[#2B2D42]">
-            {user?.restaurantName || 'AdminPanel'}
-          </h1>
-          <span className="text-[10px] font-black uppercase tracking-wider bg-slate-50 border border-slate-200 px-3 py-1 rounded-full text-slate-500 ml-2">
-            Admin Panel
-          </span>
+      {/* ── Left Sidebar ── */}
+      <aside className="w-64 min-h-screen bg-white border-r border-slate-200 flex flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
+        {/* Brand */}
+        <div className="px-5 py-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            {user?.restaurantLogo ? (
+              <img src={user.restaurantLogo} className="h-9 w-9 object-contain rounded-xl border border-slate-100 p-0.5 bg-white" alt={user.restaurantName} />
+            ) : (
+              <div className="h-9 w-9 bg-gradient-to-br from-[#E63946] to-[#FF6B35] rounded-xl flex items-center justify-center">
+                <LayoutDashboard size={18} className="text-white" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold text-[#2B2D42] truncate leading-tight">
+                {user?.restaurantName || 'Admin Panel'}
+              </h1>
+              <span className="text-[10px] font-medium text-slate-400 truncate block">{user?.email}</span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-slate-400 font-mono">{user?.email}</span>
-          <button onClick={logout} className="text-xs text-red-500 hover:text-red-700 font-bold transition-colors">
-            Sign Out
-          </button>
-        </div>
-      </header>
 
-      {/* ── Tab Bar ── */}
-      <nav className="bg-white border-b border-slate-200 px-6">
-        <div className="flex gap-1 overflow-x-auto">
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+              className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                 activeTab === tab.key
-                  ? 'text-[#E63946] border-[#E63946]'
-                  : 'text-slate-400 border-transparent hover:text-[#2B2D42] hover:border-slate-300'
+                  ? 'bg-[#E63946]/10 text-[#E63946]'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-[#2B2D42]'
               }`}
             >
-              <tab.icon size={16} />
+              <tab.icon size={18} className={activeTab === tab.key ? 'text-[#E63946]' : 'text-slate-400'} />
               {tab.label}
             </button>
           ))}
-        </div>
-      </nav>
+        </nav>
 
-      {/* ── Tab Content ── */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Sidebar Bottom */}
+        <div className="px-4 pb-5 mt-auto border-t border-slate-100 pt-4 flex flex-col gap-3">
+          <button
+            onClick={() => handleLaunchTerminal('staff')}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-colors border border-indigo-100"
+          >
+            <Key size={14} />
+            Launch Terminal
+          </button>
+          <button
+            onClick={logout}
+            className="w-full text-xs text-red-400 hover:text-red-600 font-bold transition-colors py-1.5"
+          >
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Right Content Area ── */}
+      <div className="flex-1 min-h-screen overflow-y-auto">
+        {/* Top Bar */}
+        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+          <div>
+            <h2 className="text-lg font-bold text-[#2B2D42]">{tabs.find(t => t.key === activeTab)?.label}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {activeTab === 'menu' && `${menuItems.length} items across ${catsToDisplay.length} categories`}
+              {activeTab === 'orders' && `${filteredOrders.length} orders`}
+              {activeTab === 'sales' && 'Revenue & analytics overview'}
+              {activeTab === 'qr' && `${tableCount} table QR codes`}
+              {activeTab === 'staff' && `${staffList.length} staff logins`}
+              {activeTab === 'settings' && 'Restaurant configuration'}
+            </p>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-wider bg-slate-50 border border-slate-200 px-3 py-1 rounded-full text-slate-500">
+            Admin Panel
+          </span>
+        </header>
+
+        {/* ── Tab Content ── */}
+        <main className="max-w-7xl mx-auto px-8 py-8">
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {/* TAB 1: MENU EDITOR                              */}
@@ -785,34 +928,52 @@ export default function AdminView() {
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider">
                         <th className="text-left px-5 py-3.5 font-bold">Order ID</th>
-                        <th className="text-left px-5 py-3.5 font-bold">Table</th>
+                        <th className="text-left px-5 py-3.5 font-bold">Order Type</th>
                         <th className="text-left px-5 py-3.5 font-bold">Items</th>
                         <th className="text-left px-5 py-3.5 font-bold">Status</th>
                         <th className="text-right px-5 py-3.5 font-bold">Total</th>
                         <th className="text-right px-5 py-3.5 font-bold">Payment</th>
-                        <th className="text-right px-5 py-3.5 font-bold">Time</th>
+                        <th className="text-right px-5 py-3.5 font-bold">Date & Time</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOrders.map((order, idx) => (
-                        <tr key={order.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/40'}`}>
-                          <td className="px-5 py-3.5 font-mono text-xs text-slate-500">{order.id}</td>
-                          <td className="px-5 py-3.5 font-bold text-[#2B2D42]">Table {order.table_name || order.table}</td>
-                          <td className="px-5 py-3.5 text-slate-500 text-xs max-w-[200px]">
-                            {order.items.map(i => `${i.name} ×${i.quantity}`).join(', ')}
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_COLORS[order.status] || 'bg-slate-100 text-slate-500'}`}>
-                              {order.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-right font-bold text-[#E63946]">Rs {order.billing.total.toFixed(2)}</td>
-                          <td className="px-5 py-3.5 text-right text-xs text-slate-400 capitalize">{order.billing.paymentMethod}</td>
-                          <td className="px-5 py-3.5 text-right text-xs text-slate-500">
-                            {new Date(order.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredOrders.map((order, idx) => {
+                        const rawType = order.order_type || order.billing?.order_type;
+                        const tbl = String(order.table_name || order.table || '').trim();
+                        const isTakeaway = rawType === 'takeaway' || tbl.toLowerCase().includes('take away') || tbl.toLowerCase().includes('takeaway');
+                        const isDelivery = rawType === 'delivery' || tbl.toLowerCase().includes('delivery');
+                        const typeLabel = isTakeaway ? 'Takeaway' : isDelivery ? 'Delivery' : 'Dine-In';
+
+                        return (
+                          <tr key={order.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/40'}`}>
+                            <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-700">{formatOrderId(order)}</td>
+                            <td className="px-5 py-3.5 font-bold">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${
+                                isTakeaway
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : isDelivery
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
+                                {typeLabel}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-slate-500 text-xs max-w-[200px]">
+                              {order.items.map(i => `${i.name} ×${i.quantity}`).join(', ')}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_COLORS[order.status] || 'bg-slate-100 text-slate-500'}`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right font-bold text-[#E63946]">Rs {(order.billing?.total || 0).toFixed(2)}</td>
+                            <td className="px-5 py-3.5 text-right text-xs text-slate-400 capitalize">{order.billing?.paymentMethod || 'unpaid'}</td>
+                            <td className="px-5 py-3.5 text-right text-xs text-slate-500 font-medium">
+                              {formatReceiptDate(order.timestamp || order.created_at)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -912,8 +1073,8 @@ export default function AdminView() {
           <div className="animate-fade-in max-w-4xl">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-[#2B2D42]">QR Code Generator</h2>
-                <p className="text-slate-500 text-sm mt-1">Print table stands for custom ordering links</p>
+                <h2 className="text-2xl font-bold text-[#2B2D42]">Secure QR Table Code Manager</h2>
+                <p className="text-slate-500 text-sm mt-1">Manage, print, and regenerate unique cryptographic table codes for QR stands</p>
               </div>
               <button
                 onClick={printAllQrs}
@@ -923,35 +1084,122 @@ export default function AdminView() {
               </button>
             </div>
 
-            <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col md:flex-row gap-8 items-center">
-              <div className="flex-1 w-full">
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Total Restaurant Tables</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={tableCount}
-                  onChange={(e) => setTableCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-32 py-2.5 px-4 bg-white border border-slate-200 rounded-xl text-[#2B2D42] text-sm focus:border-[#E63946] outline-none mb-6"
-                />
-                
-                <h3 className="font-bold text-sm text-[#2B2D42] mb-3">Individual Tables</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {Array.from({ length: tableCount }, (_, i) => i + 1).map(num => (
-                    <div key={num} className="border border-slate-150 rounded-xl p-3 flex justify-between items-center bg-slate-50/50">
-                      <span className="font-bold text-xs">Table {num}</span>
-                      <button
-                        onClick={() => printSingleQr(num)}
-                        className="p-2 bg-white border border-slate-200 rounded-lg hover:border-[#E63946] text-[#E63946] hover:bg-red-50/30 transition-all"
-                        title="Print table QR"
-                      >
-                        <Printer size={12} />
-                      </button>
-                    </div>
-                  ))}
+            <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)]">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Total Restaurant Tables</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={tableCount}
+                    onChange={(e) => setTableCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-32 py-2 px-4 bg-white border border-slate-200 rounded-xl text-[#2B2D42] font-bold text-sm focus:border-[#E63946] outline-none"
+                  />
                 </div>
+                <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                  🔒 Table codes protect against manual URL tampering
+                </span>
+              </div>
+
+              <h3 className="font-bold text-sm text-[#2B2D42] mb-4">Table Codes & Development Links</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: tableCount }, (_, i) => i + 1).map(num => {
+                  const code = tableCodesMap[num] || '...';
+                  const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant') || 'default';
+                  const fullUrl = `${window.location.origin}/r/${slug}/customer?table=${code}`;
+
+                  return (
+                    <div key={num} className="border border-slate-200 rounded-2xl p-4 flex flex-col justify-between bg-slate-50/60 hover:bg-slate-50 transition-colors gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-sm text-[#2B2D42]">Table {num}</span>
+                          <span className="font-mono font-bold text-xs bg-slate-900 text-white px-2 py-0.5 rounded-md tracking-wider">
+                            {code}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setConfirmRegenTable(num)}
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold transition-all"
+                            title="Regenerate table code"
+                          >
+                            Reset Code
+                          </button>
+                          <button
+                            onClick={() => printSingleQr(num)}
+                            className="p-1.5 bg-white border border-slate-200 rounded-lg hover:border-[#E63946] text-[#E63946] hover:bg-red-50/30 transition-all shadow-xs"
+                            title="Print QR stand"
+                          >
+                            <Printer size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Full Dev URL & Quick Action Links */}
+                      <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between text-xs font-mono">
+                        <a
+                          href={fullUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#E63946] hover:underline truncate font-semibold mr-2"
+                          title={fullUrl}
+                        >
+                          {fullUrl}
+                        </a>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(fullUrl);
+                              toast.success(`Copied Table ${num} URL!`);
+                            }}
+                            className="text-[11px] font-bold font-sans text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded transition-all"
+                          >
+                            Copy
+                          </button>
+                          <a
+                            href={fullUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold font-sans text-white bg-[#2B2D42] hover:bg-[#2B2D42]/90 px-2.5 py-0.5 rounded transition-all"
+                          >
+                            Open ↗
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Confirmation Modal for Regenerating Code */}
+            {confirmRegenTable && (
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
+                  <h3 className="text-xl font-bold text-[#2B2D42] mb-2">Regenerate Code for Table {confirmRegenTable}?</h3>
+                  <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                    Generating a new random code for <strong className="text-slate-900">Table {confirmRegenTable}</strong> will immediately <strong className="text-red-600">invalidate the existing physical QR code stand</strong> on the table. Anyone scanning the old QR stand will be denied access.
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setConfirmRegenTable(null)}
+                      disabled={isRegenerating}
+                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleRegenerateCode(confirmRegenTable)}
+                      disabled={isRegenerating}
+                      className="px-5 py-2.5 bg-[#E63946] hover:bg-[#FF6B35] text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
+                    >
+                      {isRegenerating ? 'Regenerating…' : 'Yes, Invalidate & Regenerate'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1257,8 +1505,8 @@ export default function AdminView() {
         )}
 
       </main>
+      </div>{/* end right content area */}
 
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       {/* MODAL: Menu Add / Edit Item                       */}
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       {menuModal && (

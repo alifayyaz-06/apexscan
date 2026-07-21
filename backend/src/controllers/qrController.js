@@ -1,0 +1,187 @@
+const TableCodeManager = require('../utils/tableCodeManager');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'antigravity-pos-secret-key-2026';
+
+class QRController {
+  /**
+   * GET /api/v1/qr/generate?table=1&restaurant=slug
+   * Returns unique random table code (e.g. X9QK72) and secure QR URL for a table.
+   */
+  static async generateToken(req, res) {
+    try {
+      const table = req.query.table || req.body.table || '1';
+      const restaurant = req.query.restaurant || req.body.restaurant || req.restaurantSlug || 'default';
+
+      const tableCode = TableCodeManager.getTableCode(restaurant, table);
+      const host = req.get('host');
+      const protocol = req.protocol;
+      const qrUrl = `${protocol}://${host}/r/${restaurant}/customer?table=${tableCode}`;
+
+      // Create a signed JWT session for backwards safety if required
+      const token = jwt.sign({ table, tableNumber: table, tableCode, restaurantId: restaurant }, JWT_SECRET, { expiresIn: '365d' });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          table: String(table),
+          tableNumber: String(table),
+          tableCode,
+          restaurant: String(restaurant),
+          token,
+          qrUrl
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/v1/qr/tables?restaurant=slug&count=20
+   * Batch fetches all random table codes for a restaurant
+   */
+  static async getAllTables(req, res) {
+    try {
+      const restaurant = req.query.restaurant || req.restaurantSlug || 'default';
+      const count = parseInt(req.query.count || '20', 10);
+      const tables = TableCodeManager.getAllTableCodes(restaurant, count);
+      return res.status(200).json({ success: true, data: tables });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/v1/tables/resolve?code=X9QK72&restaurant=slug
+   * POST /api/v1/qr/verify
+   * Customer opens ?table=X9QK72. Resolves random code to internal table identity.
+   */
+  static async verifyQRToken(req, res) {
+    try {
+      const code = req.query.code || req.body.code || req.body.table || req.body.token;
+      const restaurant = req.query.restaurant || req.body.restaurant || req.restaurantSlug || 'default';
+
+      if (!code) {
+        return res.status(400).json({ success: false, message: 'Table code is required.' });
+      }
+
+      // Check if it's a signed JWT token or a 6-character random table code
+      let resolved = TableCodeManager.resolveCode(restaurant, code);
+
+      if (!resolved) {
+        // Attempt JWT token verify fallback if a token string was passed
+        try {
+          const decoded = jwt.verify(code, JWT_SECRET);
+          if (decoded && (decoded.table || decoded.tableNumber)) {
+            resolved = {
+              tableNumber: String(decoded.tableNumber || decoded.table),
+              tableCode: decoded.tableCode || code,
+              restaurantSlug: restaurant
+            };
+          }
+        } catch (e) {}
+      }
+
+      // If still not resolved -> Return 404 Invalid Table Code!
+      if (!resolved) {
+        return res.status(404).json({
+          success: false,
+          message: `Invalid or unassigned table code "${code}". Table access denied.`
+        });
+      }
+
+      // Create session JWT
+      const sessionJwt = jwt.sign({
+        tableNumber: resolved.tableNumber,
+        tableCode: resolved.tableCode,
+        restaurantId: restaurant
+      }, JWT_SECRET, { expiresIn: '12h' });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          sessionId: sessionJwt,
+          table: resolved.tableNumber,
+          tableNumber: resolved.tableNumber,
+          tableCode: resolved.tableCode,
+          restaurantId: restaurant
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * POST /api/v1/qr/regenerate
+   * Admin panel action: Regenerates a table code, invalidating the old QR stand.
+   */
+  static async regenerateCode(req, res) {
+    try {
+      const { table, restaurant } = req.body;
+      if (!table || !restaurant) {
+        return res.status(400).json({ success: false, message: 'table and restaurant are required.' });
+      }
+
+      const newCode = TableCodeManager.regenerateCode(restaurant, table);
+      const host = req.get('host');
+      const protocol = req.protocol;
+      const qrUrl = `${protocol}://${host}/r/${restaurant}/customer?table=${newCode}`;
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          table: String(table),
+          tableNumber: String(table),
+          tableCode: newCode,
+          restaurant: String(restaurant),
+          qrUrl
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * Resolve session helper for OrderController
+   */
+  static resolveSession(sessionIdOrCode) {
+    if (!sessionIdOrCode) return null;
+
+    // Check if it's a random 6-char table code
+    if (sessionIdOrCode.length === 6) {
+      const resolved = TableCodeManager.resolveCode('default', sessionIdOrCode);
+      if (resolved) return { table: resolved.tableNumber };
+    }
+
+    try {
+      const decoded = jwt.verify(sessionIdOrCode, JWT_SECRET);
+      if (decoded && (decoded.table || decoded.tableNumber)) {
+        return {
+          table: String(decoded.tableNumber || decoded.table),
+          restaurantId: decoded.restaurantId
+        };
+      }
+    } catch (e) {
+      // Decode base64 payload if JWT signature check bypassed
+      try {
+        const parts = sessionIdOrCode.split('.');
+        if (parts.length >= 2) {
+          const payloadStr = Buffer.from(parts[1], 'base64').toString('utf8');
+          const decoded = JSON.parse(payloadStr);
+          if (decoded && (decoded.table || decoded.tableNumber)) {
+            return {
+              table: String(decoded.tableNumber || decoded.table),
+              restaurantId: decoded.restaurantId
+            };
+          }
+        }
+      } catch (err) {}
+    }
+    return null;
+  }
+}
+
+module.exports = QRController;

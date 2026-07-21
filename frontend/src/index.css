@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Outfit', sans-serif;
+  --font-sans: 'Roboto Condensed', 'Outfit', sans-serif;
   --font-playwrite: 'Playwrite NZ', cursive;
   --animate-fade-in: fadeIn 0.5s ease-out forwards;
   --animate-pop-in: popIn 0.22s ease-out forwards;
@@ -51,7 +51,7 @@ body {
   padding: 0;
   background-color: #F9F9F9;
   color: #2B2D42;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Roboto Condensed', 'Outfit', sans-serif;
   overflow-x: hidden;
 }
 

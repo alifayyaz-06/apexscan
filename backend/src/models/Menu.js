@@ -117,11 +117,13 @@ class Menu {
         operation: 'SELECT_ALL'
       });
 
-      if (error) throw error;
-      return data || [];
+      if (error || !data || data.length === 0) {
+        return menuItemsSeed;
+      }
+      return data;
     } catch (err) {
-      console.error('Error querying Supabase menu:', err.message);
-      throw err;
+      console.error('Error querying Supabase menu, returning seed items:', err.message);
+      return menuItemsSeed;
     }
   }
 

@@ -6,7 +6,9 @@ const orderItemSchema = z.object({
 });
 
 const createOrderSchema = z.object({
-  table: z.union([z.string(), z.number()]).transform(val => String(val)),
+  table: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+  sessionId: z.string().optional(),
+  t: z.string().optional(),
   items: z.array(orderItemSchema).min(1, 'At least one item is required').max(100),
   restaurant_id: z.string().max(100).optional(),
   restaurantSlug: z.string().max(100).optional(),

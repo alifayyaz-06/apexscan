@@ -10,7 +10,7 @@ class MenuController {
 
       if (!client) {
         // Public customer request: restaurant identifier comes from query param
-        let restaurantParam = req.query.restaurant || req.query.restaurant_id;
+        let restaurantParam = req.query.restaurant || req.query.restaurant_id || req.user?.restaurantSlug || req.restaurantSlug;
 
         if (restaurantParam) {
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,6 +39,20 @@ class MenuController {
     }
   }
 
+  static async getPublicMenu(req, res) {
+    try {
+      const slug = req.params.slug || req.query.restaurant;
+      if (!slug) {
+        return res.status(400).json({ success: false, message: 'Restaurant slug is required.' });
+      }
+      const client = getTenantClient(slug);
+      const items = await Menu.getAll(client);
+      return res.status(200).json({ success: true, data: items });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   static async getMenuItem(req, res) {
     try {
       const { id } = req.params;
@@ -55,7 +69,7 @@ class MenuController {
 
   static async createMenuItem(req, res) {
     try {
-      const { name, category, price, description, image } = req.body;
+      const { name, category, price, description, image, sizes } = req.body;
       if (!name || !category || price === undefined) {
         return res.status(400).json({ success: false, message: 'Missing required fields: name, category, price.' });
       }
@@ -66,7 +80,8 @@ class MenuController {
       const client = req.supabase || defaultClient;
       const newItem = await Menu.create({
         id, name, category, price: parseFloat(price),
-        description: description || '', image: image || ''
+        description: description || '', image: image || '',
+        sizes: Array.isArray(sizes) ? sizes : []
       }, client);
       return res.status(201).json({ success: true, data: newItem });
     } catch (error) {
@@ -79,7 +94,7 @@ class MenuController {
       const { id } = req.params;
       const updates = req.body;
 
-      const allowedFields = ['name', 'category', 'price', 'description', 'image', 'is_available'];
+      const allowedFields = ['name', 'category', 'price', 'description', 'image', 'is_available', 'sizes'];
       const sanitized = {};
       for (const key of allowedFields) {
         if (updates[key] !== undefined) {

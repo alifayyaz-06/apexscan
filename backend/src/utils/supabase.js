@@ -8,10 +8,13 @@ const defaultClient = createClient(envs.supabaseUrl, envs.supabaseKey);
 const clientCache = {};
 
 function getTenantClient(tenantSlug) {
-  if (!tenantSlug) return defaultClient;
+  let slug = tenantSlug;
+  if (!slug || slug === 'default' || String(slug).toLowerCase() === 'default') {
+    slug = 'gourmet-bistro-main';
+  }
 
   // Format schema name to match database conventions (dashes to underscores)
-  const schemaName = `tenant_${tenantSlug.replace(/-/g, '_').toLowerCase()}`;
+  const schemaName = `tenant_${slug.replace(/-/g, '_').toLowerCase()}`;
 
   if (clientCache[schemaName]) {
     return clientCache[schemaName];

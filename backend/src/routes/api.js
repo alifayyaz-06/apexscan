@@ -14,6 +14,7 @@ const OrderController = require('../controllers/orderController');
 const SalesController = require('../controllers/salesController');
 const UploadController = require('../controllers/uploadController');
 const RestaurantController = require('../controllers/restaurantController');
+const QRController = require('../controllers/qrController');
 
 // Validation schemas
 const { adminLoginSchema, adminSignupSchema, staffLoginSchema, staffRefreshSchema, forgotPasswordSchema } = require('../validators/auth.schemas');
@@ -22,6 +23,13 @@ const { createMenuItemSchema, updateMenuItemSchema } = require('../validators/me
 const { createStaffSchema, updateStaffSchema } = require('../validators/staff.schemas');
 const { updateSettingsSchema } = require('../validators/restaurant.schemas');
 const { createRestaurantSchema, updateRestaurantSchema } = require('../validators/superAdmin.schemas');
+
+// ─── Secure QR & Random Table Code Routes ───
+router.get('/qr/generate', QRController.generateToken);
+router.get('/qr/tables', QRController.getAllTables);
+router.post('/qr/verify', QRController.verifyQRToken);
+router.get('/tables/resolve', QRController.verifyQRToken);
+router.post('/qr/regenerate', authenticate, authorize('admin'), tenantGuard, QRController.regenerateCode);
 
 // ─── Restaurant Settings Routes ───
 router.get('/restaurants/public/:slug', RestaurantController.getPublicDetails);
@@ -50,6 +58,7 @@ router.patch('/staff/:id', authenticate, authorize('admin'), tenantGuard, valida
 router.delete('/staff/:id', authenticate, authorize('admin'), tenantGuard, StaffController.delete);
 
 // ─── Menu Routes ───
+router.get('/menu/public/:slug', MenuController.getPublicMenu);
 router.get('/menu', optionalAuthenticate, MenuController.getMenu);
 router.get('/menu/:id', optionalAuthenticate, MenuController.getMenuItem);
 router.post('/menu', authenticate, authorize('admin'), tenantGuard, validate(createMenuItemSchema), MenuController.createMenuItem);
@@ -62,6 +71,7 @@ router.get('/orders', authenticate, authorize('admin', 'kitchen_staff', 'sales_s
 router.get('/orders/active', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getActiveOrders);
 // Public order tracking for customers (no auth required — scoped by restaurant slug query param)
 router.get('/orders/track/:id', OrderController.trackOrder);
+router.get('/orders/table-status/:table', OrderController.checkTableStatus);
 router.get('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getOrderById);
 router.patch('/orders/:id/status', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(updateOrderStatusSchema), OrderController.updateOrderStatus);
 router.post('/orders/:id/pay', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(completePaySchema), OrderController.completeAndPayOrder);
