@@ -279,10 +279,9 @@ export default function CustomerView() {
             playBellNotification();
           }
 
-          setTimeout(() => {
-            setActiveOrderId(null);
-            setActiveOrder(null);
-          }, 3000);
+          // Clear active order after showing paid screen
+          setActiveOrderId(null);
+          setActiveOrder(null);
         }
       }
 
@@ -298,6 +297,27 @@ export default function CustomerView() {
 
     return () => cleanup();
   }, [activeOrderId, currentTable, restaurantId]);
+
+  // Prevent page refresh / back navigation while order is active
+  useEffect(() => {
+    if (!activeOrder) return;
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "Your order is being prepared. Leaving this page may cause you to lose your order tracking.";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    // Also block back button
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [activeOrder]);
 
   const fetchOrderDetails = (orderId, slug) => {
     const targetSlug = slug || getStoredRestaurantSlug();
@@ -472,11 +492,29 @@ export default function CustomerView() {
     return (
       <PaidThankYouOverlay
         activeOrder={activeOrder}
-        onNewOrder={() => setShowPaidScreen(false)}
+        onNewOrder={() => {
+          setShowPaidScreen(false);
+          setActiveOrder(null);
+          setActiveOrderId(null);
+          setCart({});
+        }}
         SANS={SANS}
         SERIF={SERIF}
         FontImport={FontImport}
       />
+    );
+  }
+
+  // LOCK SCREEN: If an active order exists, show only the stepper tracker (no menu editing)
+  if (activeOrder) {
+    return (
+      <div className="min-h-screen bg-zinc-50 text-zinc-900" style={SANS}>
+        <FontImport />
+        <ActiveOrderTracker
+          activeOrder={activeOrder}
+          currentTable={currentTable}
+        />
+      </div>
     );
   }
 
