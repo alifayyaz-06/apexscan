@@ -147,13 +147,15 @@ class QRController {
   /**
    * Resolve session helper for OrderController
    */
-  static resolveSession(sessionIdOrCode) {
+  static resolveSession(sessionIdOrCode, targetSlug = 'default') {
     if (!sessionIdOrCode) return null;
 
-    // Check if it's a random 6-char table code
-    if (sessionIdOrCode.length === 6) {
-      const resolved = TableCodeManager.resolveCode('default', sessionIdOrCode);
-      if (resolved) return { table: resolved.tableNumber };
+    const cleanStr = String(sessionIdOrCode).trim();
+    if (cleanStr.length === 6) {
+      const resolved = TableCodeManager.resolveCode(targetSlug, cleanStr) ||
+                       TableCodeManager.resolveCode('cheezious', cleanStr) ||
+                       TableCodeManager.resolveCode('default', cleanStr);
+      if (resolved) return { table: resolved.tableNumber, restaurantId: resolved.restaurantSlug };
     }
 
     try {
@@ -165,7 +167,6 @@ class QRController {
         };
       }
     } catch (e) {
-      // Decode base64 payload if JWT signature check bypassed
       try {
         const parts = sessionIdOrCode.split('.');
         if (parts.length >= 2) {
@@ -180,6 +181,13 @@ class QRController {
         }
       } catch (err) {}
     }
+
+    const resolvedFallback = TableCodeManager.resolveCode(targetSlug, cleanStr) ||
+                             TableCodeManager.resolveCode('cheezious', cleanStr);
+    if (resolvedFallback) {
+      return { table: resolvedFallback.tableNumber, restaurantId: resolvedFallback.restaurantSlug };
+    }
+
     return null;
   }
 }

@@ -1,19 +1,24 @@
 const { z } = require('zod');
 
 const orderItemSchema = z.object({
-  id: z.string().min(1, 'Item ID is required'),
+  id: z.string().optional(),
+  menu_item_id: z.string().optional(),
+  name: z.string().optional(),
+  price: z.number().optional(),
   quantity: z.number().int().positive().max(99, 'Max 99 per item')
-});
+}).passthrough();
 
 const createOrderSchema = z.object({
   table: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+  tableNumber: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
   sessionId: z.string().optional(),
   t: z.string().optional(),
   items: z.array(orderItemSchema).min(1, 'At least one item is required').max(100),
   restaurant_id: z.string().max(100).optional(),
   restaurantSlug: z.string().max(100).optional(),
+  total_amount: z.number().optional(),
   billing: z.any().optional()
-});
+}).passthrough();
 
 const updateOrderStatusSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'cooking', 'preparing', 'ready', 'served', 'completed', 'cancelled'], {

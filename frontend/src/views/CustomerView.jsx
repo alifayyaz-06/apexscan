@@ -387,7 +387,8 @@ export default function CustomerView() {
       const info = getItemInfoFromCartKey(cartKey);
       if (info) {
         orderItems.push({
-          menu_item_id: info.id,
+          id: String(info.id),
+          menu_item_id: String(info.id),
           name: info.name,
           price: info.price,
           quantity: cart[cartKey],
