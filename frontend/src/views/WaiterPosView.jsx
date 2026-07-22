@@ -76,7 +76,16 @@ export default function WaiterPosView() {
       fetchActiveOrders();
     });
 
-    return () => cleanupSocket();
+    // Auto-refresh/polling loop every 5 seconds
+    const pollInterval = setInterval(() => {
+      fetchTableSessions();
+      fetchActiveOrders();
+    }, 5000);
+
+    return () => {
+      cleanupSocket();
+      clearInterval(pollInterval);
+    };
   }, [slug]);
 
   const fetchRestaurantSettings = async () => {
