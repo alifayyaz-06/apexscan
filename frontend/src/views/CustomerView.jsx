@@ -482,6 +482,16 @@ export default function CustomerView() {
     return matchesCat && matchesSearch;
   });
 
+  // Group filtered items by category if category === "all"
+  const groupedItems = {};
+  if (category === "all") {
+    filteredItems.forEach((item) => {
+      const cat = (item.category || "Uncategorized").trim();
+      if (!groupedItems[cat]) groupedItems[cat] = [];
+      groupedItems[cat].push(item);
+    });
+  }
+
   const restaurantName = restaurantInfo?.name || "Smart QR Restaurant";
 
   // Screen Condition Early Returns
@@ -573,6 +583,40 @@ export default function CustomerView() {
           {filteredItems.length === 0 ? (
             <div className="text-center py-16 text-zinc-400 bg-white border border-zinc-200/80 rounded-3xl p-8">
               <p className="text-sm font-medium">No menu items found</p>
+            </div>
+          ) : category === "all" ? (
+            <div className="space-y-10">
+              {Object.entries(groupedItems).map(([catName, items]) => (
+                <div key={catName} className="space-y-4">
+                  <h3 className="text-base font-bold text-zinc-800 border-b border-zinc-150 pb-2 capitalize tracking-wide" style={SERIF}>
+                    {catName}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+                    {items.map((item) => {
+                      const hasSizes = Array.isArray(item.sizes) && item.sizes.length > 0;
+                      let cartQty = 0;
+
+                      if (hasSizes) {
+                        Object.keys(cart).forEach((k) => {
+                          if (k.startsWith(`${item.id}_size_`)) cartQty += cart[k];
+                        });
+                      } else {
+                        cartQty = cart[item.id] || 0;
+                      }
+
+                      return (
+                        <FoodCategoryCard
+                          key={item.id}
+                          item={item}
+                          cartQty={cartQty}
+                          onQtyChange={(id, delta) => handleQtyChange(id, delta)}
+                          onOpenSizeModal={handleOpenSizeModal}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
