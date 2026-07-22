@@ -191,7 +191,9 @@ class Order {
         deliveryArea: customBilling?.deliveryArea || null,
         deliveryCity: customBilling?.deliveryCity || null,
         deliveryInstructions: customBilling?.deliveryInstructions || null,
-        rider: customBilling?.rider || null
+        rider: customBilling?.rider || null,
+        waiterName: customBilling?.waiterName || null,
+        waiter_id: customBilling?.waiter_id || null
       };
 
       const newOrder = {
@@ -325,6 +327,11 @@ class Order {
   static async updateItems(id, newItems, supabaseClient = defaultClient) {
     try {
       const slug = supabaseClient.tenantSlug || (typeof supabaseClient === 'string' ? supabaseClient : 'gourmet-bistro-main');
+      
+      // Fetch existing order to preserve billing metadata
+      const existingOrder = await this.getById(id, supabaseClient);
+      if (!existingOrder) throw new Error('Order not found');
+
       const menuItems = await Menu.getAll(supabaseClient);
       const updatedItems = [];
       let subtotal = 0;
@@ -342,15 +349,43 @@ class Order {
         subtotal += menuItem.price * item.quantity;
       }
 
-      const tax = parseFloat((subtotal * 0.08).toFixed(2));
-      const serviceCharge = parseFloat((subtotal * 0.05).toFixed(2));
+      // Fetch dynamic tax rate and service charge from global settings
+      let taxRatePercent = 8.00;
+      let serviceChargePercent = 5.00;
+      try {
+        const { data: restaurant } = await defaultClient
+          .from('restaurants')
+          .select('tax_rate, service_charge')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (restaurant) {
+          if (restaurant.tax_rate !== null && restaurant.tax_rate !== undefined) {
+            taxRatePercent = parseFloat(restaurant.tax_rate);
+          }
+          if (restaurant.service_charge !== null && restaurant.service_charge !== undefined) {
+            serviceChargePercent = parseFloat(restaurant.service_charge);
+          }
+        }
+      } catch (dbErr) {
+        console.error('Error fetching restaurant tax rates, using defaults:', dbErr.message);
+      }
+
+      const tax = parseFloat((subtotal * (taxRatePercent / 100)).toFixed(2));
+      const serviceCharge = parseFloat((subtotal * (serviceChargePercent / 100)).toFixed(2));
+      
+      const discount = existingOrder.billing?.discount || 0;
+      const total = parseFloat((subtotal - discount + tax + serviceCharge).toFixed(2));
+
       const billing = {
+        ...(existingOrder.billing || {}),
         subtotal,
         tax,
         serviceCharge,
-        total: parseFloat((subtotal + tax + serviceCharge).toFixed(2)),
-        paymentMethod: 'unpaid',
-        paymentTimestamp: null
+        total,
+        paymentMethod: existingOrder.billing?.paymentMethod || 'unpaid',
+        paymentStatus: existingOrder.billing?.paymentStatus || 'paid',
+        pendingAmount: existingOrder.billing?.paymentStatus === 'pending' ? total : 0
       };
 
       const { data, error } = await defaultClient.rpc('query_tenant', {

@@ -366,6 +366,12 @@ export default function WaiterView() {
                   <td class="font-bold">T-${String(order.table_name || order.table || '').replace(/Table\s*/i, '').padStart(2, '0')}</td>
                 </tr>
               `}
+              ${order.billing?.waiterName ? `
+                <tr>
+                  <td>Waiter   :</td>
+                  <td>${order.billing.waiterName}</td>
+                </tr>
+              ` : ''}
               <tr>
                 <td>Cashier  :</td>
                 <td>${order.billing?.confirmedBy || user?.displayName || 'Staff'}</td>
@@ -838,6 +844,8 @@ export default function WaiterView() {
     const badges = [];
     if (order.order_source === 'manual') {
       badges.push({ label: 'Manual Order', className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold uppercase tracking-wider text-[0.6rem]' });
+    } else if (order.order_source === 'waiter') {
+      badges.push({ label: `Waiter: ${order.billing?.waiterName || 'Staff'}`, className: 'bg-amber-100 text-amber-800 border-amber-300 font-bold uppercase tracking-wider text-[0.6rem]' });
     } else {
       badges.push({ label: 'QR Order', className: 'bg-blue-50 text-blue-700 border-blue-200 font-bold uppercase tracking-wider text-[0.6rem]' });
     }
@@ -1561,6 +1569,9 @@ export default function WaiterView() {
                           <span>Tax: Rs {order.billing.tax ? order.billing.tax.toFixed(2) : '0.00'}</span>
                           <span className="font-bold text-sm">Total: Rs {order.billing.total.toFixed(2)}</span>
                         </div>
+                        {order.billing?.waiterName && (
+                          <div className="text-[10px] text-amber-700 font-bold -mt-2">Waiter: {order.billing.waiterName}</div>
+                        )}
                         {order.billing?.confirmedBy && (
                           <div className="text-[10px] text-zinc-500 -mt-2">Sales Rep: {order.billing.confirmedBy}</div>
                         )}
@@ -1633,6 +1644,9 @@ export default function WaiterView() {
                           <span>Tax: Rs {order.billing.tax ? order.billing.tax.toFixed(2) : '0.00'}</span>
                           <span className="font-bold text-sm">Total: Rs {order.billing.total.toFixed(2)}</span>
                         </div>
+                        {order.billing?.waiterName && (
+                          <div className="text-[10px] text-amber-700 font-bold -mt-2">Waiter: {order.billing.waiterName}</div>
+                        )}
                         {order.billing?.confirmedBy && (
                           <div className="text-[10px] text-zinc-500 -mt-2">Sales Rep: {order.billing.confirmedBy}</div>
                         )}
@@ -1695,6 +1709,9 @@ export default function WaiterView() {
                           <span>Tax: Rs {order.billing.tax ? order.billing.tax.toFixed(2) : '0.00'}</span>
                           <span className="font-bold text-sm">Total: Rs {order.billing.total.toFixed(2)}</span>
                         </div>
+                        {order.billing?.waiterName && (
+                          <div className="text-[10px] text-amber-700 font-bold -mt-2">Waiter: {order.billing.waiterName}</div>
+                        )}
                         {order.billing?.confirmedBy && (
                           <div className="text-[10px] text-zinc-500 -mt-2">Sales Rep: {order.billing.confirmedBy}</div>
                         )}
@@ -1815,6 +1832,9 @@ export default function WaiterView() {
                           <span>Tax: Rs {order.billing.tax ? order.billing.tax.toFixed(2) : '0.00'}</span>
                           <span className="font-bold text-sm">Total Bill: Rs {order.billing.total.toFixed(2)}</span>
                         </div>
+                        {order.billing?.waiterName && (
+                          <div className="text-[10px] text-amber-700 font-bold -mt-2 mb-3">Waiter: {order.billing.waiterName}</div>
+                        )}
                         {order.billing?.confirmedBy && (
                           <div className="text-[10px] text-zinc-500 -mt-2 mb-3">Sales Rep: {order.billing.confirmedBy}</div>
                         )}
@@ -2058,6 +2078,12 @@ export default function WaiterView() {
                       <span className="font-bold text-black">
                         {`T-${String(billingOrder.table_name || billingOrder.table || '').replace(/Table\s*/i, '').padStart(2, '0')}`}
                       </span>
+                    </>
+                  )}
+                  {billingOrder.billing?.waiterName && (
+                    <>
+                      <span className="text-zinc-500">Waiter   :</span>
+                      <span className="font-semibold text-black">{billingOrder.billing.waiterName}</span>
                     </>
                   )}
                   <span className="text-zinc-500">Cashier  :</span>

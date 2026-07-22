@@ -1,5 +1,8 @@
 import React from "react";
-import { UtensilsCrossed, Volume2, VolumeX, Maximize2, Minimize2, LogOut, Flame } from "lucide-react";
+import { UtensilsCrossed, Volume2, VolumeX, Maximize2, Minimize2, LogOut } from "lucide-react";
+
+const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
+const SANS = { fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" };
 
 export default function KitchenHeader({
   restaurantName,
@@ -20,21 +23,21 @@ export default function KitchenHeader({
   ];
 
   return (
-    <header className="bg-zinc-900 border-b border-zinc-800 text-white py-3.5 px-4 sm:px-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 shadow-xl">
+    <header className="bg-white border-b border-[#EBE7E0] py-3.5 px-4 sm:px-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 shadow-xs" style={SANS}>
       {/* Title & Brand */}
       <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-600/30">
-            <Flame className="w-5 h-5 fill-white text-white" />
+          <div className="w-9 h-9 rounded-xl bg-[#171512] flex items-center justify-center text-white font-bold">
+            <UtensilsCrossed size={18} />
           </div>
           <div>
-            <h1 className="font-bold text-base tracking-tight text-white flex items-center gap-2">
-              <span>Kitchen Display System</span>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full">
+            <h1 className="text-sm font-bold text-[#171512] flex items-center gap-2" style={SERIF}>
+              <span>Kitchen Display</span>
+              <span className="text-[10px] font-sans font-extrabold uppercase tracking-widest text-[#8A8580] bg-[#F9F8F6] border border-[#EBE7E0] px-2 py-0.5 rounded-md">
                 KDS
               </span>
             </h1>
-            <p className="text-xs text-zinc-400 font-medium">
+            <p className="text-[11px] text-[#8A8580] font-medium">
               {restaurantName || "Smart QR Restaurant"}
             </p>
           </div>
@@ -44,13 +47,13 @@ export default function KitchenHeader({
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white cursor-pointer"
+            className="p-2 rounded-xl bg-[#F9F8F6] border border-[#EBE7E0] text-[#8A8580] hover:text-[#171512] cursor-pointer"
           >
             {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
           <button
             onClick={onLogout}
-            className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+            className="p-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200/80 hover:bg-rose-100 cursor-pointer"
           >
             <LogOut size={16} />
           </button>
@@ -65,16 +68,16 @@ export default function KitchenHeader({
             <button
               key={opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 isActive
-                  ? "bg-rose-600 text-white shadow-md shadow-rose-600/20"
-                  : "bg-zinc-800/80 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                  ? "bg-[#171512] text-white shadow-xs"
+                  : "bg-[#F9F8F6] text-[#8A8580] border border-[#EBE7E0] hover:text-[#171512]"
               }`}
             >
               <span>{opt.label}</span>
               {opt.count > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                  isActive ? "bg-white/20 text-white" : "bg-zinc-700 text-zinc-300"
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                  isActive ? "bg-white/20 text-white" : "bg-[#EBE7E0] text-[#171512]"
                 }`}>
                   {opt.count}
                 </span>
@@ -88,10 +91,10 @@ export default function KitchenHeader({
       <div className="hidden md:flex items-center gap-3">
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
             soundEnabled
-              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-              : "bg-zinc-800 text-zinc-400 border-zinc-700"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : "bg-[#F9F8F6] text-[#8A8580] border-[#EBE7E0]"
           }`}
         >
           {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
@@ -100,7 +103,7 @@ export default function KitchenHeader({
 
         <button
           onClick={toggleFullscreen}
-          className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer border border-zinc-700"
+          className="p-2 rounded-xl bg-[#F9F8F6] hover:bg-zinc-100 text-[#8A8580] hover:text-[#171512] transition-all cursor-pointer border border-[#EBE7E0]"
           title="Toggle Fullscreen"
         >
           {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -108,7 +111,7 @@ export default function KitchenHeader({
 
         <button
           onClick={onLogout}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/80 transition-all cursor-pointer"
         >
           <LogOut size={14} />
           <span>Exit KDS</span>
