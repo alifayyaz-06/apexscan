@@ -82,6 +82,13 @@ export default function CustomerView() {
       } else {
         setIsTableOccupiedByOthers(false);
         setOccupiedOrderDetails(null);
+        // Table is free in database! Clear any stale local storage tracking
+        const targetTbl = tbl || currentTable || localStorage.getItem("ordering_table");
+        if (targetTbl) {
+          localStorage.removeItem(`active_order_table_${targetTbl}`);
+        }
+        setActiveOrderId(null);
+        setActiveOrder(null);
       }
     } catch (err) {
       console.error("Table status check error:", err);
@@ -325,9 +332,15 @@ export default function CustomerView() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data) {
-          setActiveOrder(data.data);
-          if (data.data.status === "completed") {
-            setShowPaidScreen(true);
+          if (data.data.status === "completed" || data.data.status === "cancelled") {
+            const tbl = currentTable || localStorage.getItem("ordering_table");
+            if (tbl) {
+              localStorage.removeItem(`active_order_table_${tbl}`);
+            }
+            setActiveOrderId(null);
+            setActiveOrder(null);
+          } else {
+            setActiveOrder(data.data);
           }
         }
       })
