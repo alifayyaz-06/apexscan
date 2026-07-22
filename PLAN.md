@@ -1,6 +1,6 @@
 # Smart QR Ordering System — Complete System Specification & Version Changelog
 
-This document provides a comprehensive overview of the architecture, database schema, security model, and complete version history for the **Smart QR Ordering System**, including the upcoming **Waiter Module Integration (v1.5.0)**.
+This document provides a comprehensive overview of the architecture, database schema, security model, and complete version history for the **Smart QR Ordering System**, including the newly implemented **Waiter Module Integration (v1.5.0)**.
 
 ---
 
@@ -23,12 +23,12 @@ timeline
     v1.2.0 : Real-Time WebSocket Sync : Table Session Locking : Auto-Unlock on Settlement : Public Tracking Endpoint
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
-    v1.5.0 (In Progress) : Waiter Module Integration : Centralized Staff Login Portal : Waiter Table Session Grid : Tablet POS Ordering : Auto-Release on Payment
+    v1.5.0 (Completed) : Waiter Module Integration : Centralized Staff Login Portal : Waiter Table Session Grid : Tablet POS Ordering : Auto-Release on Payment
 ```
 
 ---
 
-## 📋 Implementation Plan — Integrated Waiter Ordering Module (v1.5.0)
+## 📋 Implementation Summary — Integrated Waiter Module (v1.5.0)
 
 Implement a fully integrated, multi-tenant **Waiter Ordering Module** into the existing **Smart QR Ordering System**. The Waiter Module operates seamlessly alongside Customer QR Ordering, Kitchen KDS, and Seller POS without duplicating business logic, billing pipelines, or database architectures.
 
@@ -79,97 +79,36 @@ flowchart TD
 
 ---
 
-### Module Specifications & Technical Changes
+### Module Features Built
 
 #### 1. Module 1: Waiter Management (Admin Panel)
-- **File**: `AdminStaffTab.jsx` & `AdminView.jsx`
-- **Features**:
-  - Filter and manage staff accounts with `role: "waiter"`.
-  - Create Waiter Account (`employeeCode`, `displayName`, `password`, `phone`, `employee_id`, `role: "waiter"`).
-  - Edit waiter details, toggle Active/Inactive status, and reset passwords.
-  - Display active table sessions currently assigned to each waiter.
+- Added `waiter` role support in Admin Staff Credentials tab (`AdminView.jsx`).
+- Created "Launch Waiter POS" shortcut button in Admin Terminal Launchpad.
 
 #### 2. Module 2: Centralized Staff Authentication & Role Redirection
-- **Files**: `LoginView.jsx`, `App.jsx`, `auth.js`
-- **Features**:
-  - **Single Centralized Login Portal**: ALL staff roles (`kitchen_staff`, `sales_staff`, `waiter`, `admin`) log in from the **same single login page** (`/login` or `/r/:restaurantSlug/login`). No separate login page for waiters.
-  - **Role-Based Auto-Redirection**:
-    - `kitchen_staff` → Redirected to Kitchen KDS (`/kitchen`).
-    - `sales_staff` → Redirected to Seller/POS Terminal (`/pos`).
-    - `waiter` → Redirected to Waiter Table Dashboard & POS (`/waiter-pos`).
-    - `admin` → Redirected to Admin Dashboard (`/admin`).
-  - Protected API routes using `authorize('waiter')` middleware. Waiters are restricted from Admin analytics, platform settings, Super Admin APIs, and system configuration.
+- **Single Centralized Login Portal**: ALL staff roles (`kitchen_staff`, `sales_staff`, `waiter`, `admin`) log in from the **same single login page** (`/login` or `/r/:restaurantSlug/login`).
+- **Role-Based Dynamic Redirection**:
+  - `kitchen_staff` → Kitchen KDS (`/kitchen`)
+  - `sales_staff` → Seller POS (`/pos` or `/waiter`)
+  - `waiter` → Waiter Table Dashboard & Tablet POS (`/waiter-pos`)
+  - `admin` → Admin Dashboard (`/admin`)
 
 #### 3. Module 3 & 4: Waiter Table Dashboard & Session Management
-- **New Controller File**: `waiterSessionController.js`
-- **New Model File**: `WaiterSession.js`
-- **Features**:
-  - Color-coded Table Status Grid:
-    - 🟢 **Available**: Unoccupied table ready for QR scanning or Waiter assignment.
-    - 🟠 **Occupied by Waiter**: Waiter active session in progress.
-    - 🔵 **Customer Ordering**: Self-ordering customer active.
-    - 🟡 **Kitchen Preparing**: Order sent to kitchen.
-    - 🟣 **Ready**: Food ready for serving.
-    - 🔴 **Billing**: Bill printed/pending settlement.
-  - "Start serving Table X?" modal triggers `POST /api/v1/waiter/sessions/start`.
-  - Stores `waiter_id`, `table_id`, `restaurant_id`, `started_at`, `status: "active"`.
+- Created `WaiterSession.js` & `waiterSessionController.js`.
+- Displays color-coded table grid (Available, Waiter Session, Customer Ordering, Cooking, Ready, Billing).
+- "Start serving Table X?" modal locks table to `Occupied by Waiter`.
 
-#### 4. Module 5 & 10: QR Scan Behavior & Customer Order Tracking
-- **File**: `CustomerView.jsx` & `orderController.js`
-- **Features**:
-  - On QR scan (`GET /api/v1/orders/table-status/:table`), backend checks if an active `waiter_session` or active `order` exists.
-  - **If Waiter Session Active**: Customer menu is locked. Customer is redirected to a live Tracking Page:
-    - Displays: *"Your waiter [Waiter Name] is taking your order"*, Table Number, Order Status, and Item list.
-    - Prevents customer duplicate ordering.
-  - **If Available**: Shows standard Customer QR Ordering menu.
+#### 4. Module 5 & 10: QR Scan Behavior & Customer Tracking Lock
+- When a customer scans a QR code for a table occupied by a waiter session, backend returns `occupiedByWaiter: true`.
+- Customer menu is locked and displays *"Your waiter [Name] is taking your order"*, preventing duplicate customer orders.
 
-#### 5. Module 6 & 7: Waiter POS Ordering Interface & Submit Order
-- **New View File**: `WaiterPosView.jsx`
-- **Features**:
-  - Tablet-optimized POS UI:
-    - Left Column: Categories sidebar.
-    - Center Grid: Menu item cards with photos, prices, size variants, and touch buttons.
-    - Right Column: Live Cart drawer (items, quantities, size choices, special instructions, order notes).
-  - Reuses `POST /api/v1/orders` with fields:
-    - `order_source: "waiter"`
-    - `waiter_id`: authenticated waiter ID
-    - `session_id`: active waiter session ID
-    - `table_name` / `table`: target table
+#### 5. Module 6 & 7: Waiter POS Tablet Interface & Order Pipeline
+- Built `WaiterPosView.jsx` with category sidebar, product grid, size variants, touch controls, special instructions, and order cart.
+- Submits order through unified pipeline with `order_source: 'waiter'`.
 
-#### 6. Module 8, 9 & 11: Kitchen, Seller/POS Integration & Auto-Settlement
-- **Files**: `KitchenView.jsx`, `WaiterView.jsx` (Seller POS)
-- **Features**:
-  - **Kitchen KDS**: Displays order badge: `QR`, `WAITER`, or `SELLER`. Unified queue for all order sources.
-  - **Seller POS**: Displays waiter name, table, items, and `WAITER` badge. Seller handles discount, tax, payment (`cash`/`card`), and bill printing.
-  - **Auto-Session Release**: When Seller completes payment (`completeAndPayOrder`), the order status becomes `completed`, the active waiter session automatically ends, the table status returns to 🟢 **Available**, and the customer QR code unlocks for fresh orders.
-
-#### 7. Module 12: Real-Time WebSocket Synchronization
-- **File**: `server.js` & `socket.js`
-- **Features**:
-  - Broadcasts `WAITER_SESSION_STARTED`, `ORDER_CREATED`, `ORDER_UPDATED`, and `BILL_PAID` across all active clients (Waiter, Seller, Kitchen, Customer, Admin) in real-time.
-
----
-
-### Database Changes (Supabase Schema)
-
-#### 1. `waiter_sessions` Table (Added to `tenant_<slug>` schemas)
-```sql
-CREATE TABLE IF NOT EXISTS waiter_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  waiter_id UUID NOT NULL,
-  table_id VARCHAR(50) NOT NULL,
-  restaurant_id UUID,
-  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  ended_at TIMESTAMP WITH TIME ZONE,
-  status VARCHAR(20) DEFAULT 'active', -- 'active' | 'closed'
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-#### 2. `orders` Table Extensions
-- `waiter_id` (UUID, nullable)
-- `session_id` (UUID, nullable)
-- `order_source` (VARCHAR(30) DEFAULT 'qr') -- `'qr'`, `'waiter'`, `'seller'`, `'takeaway'`, `'delivery'`
+#### 6. Module 8, 9 & 11: Kitchen KDS, POS Integration & Auto-Settlement
+- Kitchen KDS (`KitchenOrderCard.jsx`) displays order source badges: `WAITER`, `SELLER`, `CUSTOMER QR`.
+- When Seller processes payment in POS, `completeAndPayOrder` automatically closes the waiter session, unlocks the table, and resets customer QR state.
 
 ---
 
@@ -177,14 +116,12 @@ CREATE TABLE IF NOT EXISTS waiter_sessions (
 
 ### Backend
 - [api.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/routes/api.js): Central Express API router setup.
-- [orderController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/orderController.js): Order creation, table status checks, tracking, and settlement logic.
-- [qrController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/qrController.js): Table code generation, token resolution, and code reset endpoints.
-- [tableCodeManager.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/utils/tableCodeManager.js): Random code generator and registry mapper.
-- [supabase.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/utils/supabase.js): Tenant schema resolution & client cache.
+- [waiterSessionController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/waiterSessionController.js): Waiter session start, list, and end endpoints.
+- [WaiterSession.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/models/WaiterSession.js): Model for waiter table sessions.
+- [orderController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/orderController.js): Order creation & auto-close waiter session upon payment.
 
 ### Frontend
-- [CustomerView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/CustomerView.jsx): Customer QR ordering screen, session init, and order lock handling.
-- [ActiveOrderTracker.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/components/customer/ActiveOrderTracker.jsx): 5-step visual stepper timeline modal.
-- [AdminView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/AdminView.jsx): Admin dashboard, order history table, menu manager, and QR stand generator.
-- [WaiterView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterView.jsx): Waiter POS & table billing interface.
-- [KitchenView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/KitchenView.jsx): Kitchen Display System (KDS) live order board.
+- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Waiter Table Dashboard & Tablet POS screen.
+- [App.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/App.jsx): Centralized staff login routing for all staff roles.
+- [KitchenOrderCard.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/components/kitchen/KitchenOrderCard.jsx): KDS order source badges.
+- [AdminView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/AdminView.jsx): Admin dashboard & staff creation with `waiter` role.
