@@ -1,6 +1,6 @@
 # Smart QR Ordering System — Complete System Specification & Version Changelog
 
-This document provides a comprehensive overview of the architecture, database schema, security model, and complete version history for the **Smart QR Ordering System**, including the newly implemented **Waiter Module Integration (v1.5.0)**.
+This document provides a comprehensive overview of the architecture, database schema, security model, and complete version history for the **Smart QR Ordering System**, including the **Waiter Module Integration (v1.5.0)**.
 
 ---
 
@@ -23,86 +23,88 @@ timeline
     v1.2.0 : Real-Time WebSocket Sync : Table Session Locking : Auto-Unlock on Settlement : Public Tracking Endpoint
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
-    v1.5.0 (Completed) : Waiter Module Integration : Mobile/Tablet Single-Column Touch Responsive : Floating Basket Checkout Button : Real-time Seller POS Order Queue : Auto-Release on Payment
+    v1.5.0 (Completed) : Waiter Module Integration : Mobile/Tablet Touch Responsive : Real-time Seller POS Order Queue : Robust Multi-Layer Auth : Auto-Release on Payment
 ```
 
 ---
 
 ## 📋 Implementation Summary — Integrated Waiter Module (v1.5.0)
 
-Implement a fully integrated, multi-tenant **Waiter Ordering Module** into the existing **Smart QR Ordering System**. The Waiter Module operates seamlessly alongside Customer QR Ordering, Kitchen KDS, and Seller POS without duplicating business logic, billing pipelines, or database architectures.
+### Order Flow Pipeline
 
-### Architecture Overview & Data Flow
+```mermaid
+flowchart LR
+    Waiter["🧑‍🍳 Waiter POS<br/>(Select Table → Menu → Cart → Submit)"]
+    SellerPOS["💰 Seller POS Screen<br/>(Real-time order appears as 'pending')"]
+    Kitchen["👨‍🍳 Kitchen KDS<br/>(Order appears after seller confirms)"]
+    Customer["📱 Customer Tracker<br/>(Live 5-step progress)"]
+
+    Waiter -->|"POST /orders<br/>order_source: waiter<br/>status: pending"| SellerPOS
+    SellerPOS -->|"PATCH status → cooking"| Kitchen
+    Kitchen -->|"PATCH status → ready/served"| Customer
+    SellerPOS -->|"POST /pay → completed"| Customer
+```
+
+### Key Bug Fixes in v1.5.0
+
+| Issue | Root Cause | Fix | Commit |
+|-------|-----------|-----|--------|
+| `Role must be kitchen_staff, sales_staff or rider` | staffController.js hardcoded role array missing `waiter` | Added `waiter` to validation array | `026a310` |
+| `403 Forbidden` on `/orders/active` | api.js `authorize()` missing `waiter` role | Added `waiter` to all order route authorizations | `f93d122` |
+| Waiter login → wrong screen | LoginView.jsx redirected all non-kitchen staff to `/waiter` (seller route) | Added explicit `waiter` role → `/waiter-pos` redirect | `80b5088` |
+| `403 Forbidden` on `/restaurants/settings` | Route only allowed `admin` role | Added `sales_staff`, `waiter`, `kitchen_staff` | `f44aa94` |
+| `tenantGuard` 403 on staff requests | Missing `req.restaurantId`/`req.restaurantSlug` caused hard 403 | Added fallback auto-population from `req.user` | `0311770` |
+| **Orders not appearing on Seller screen** | `restaurantParam` in `createOrder` never fell back to `req.body.restaurantSlug`, causing wrong tenant storage AND skipping WebSocket broadcast entirely | Added `|| reqSlug` fallback to `restaurantParam` resolution chain | `955ee36` |
+
+### Architecture Overview
 
 ```mermaid
 flowchart TD
-    subgraph CentralAuth["Centralized Staff Login Portal (/login or /r/:slug/login)"]
-        CentralLogin["Single Login Portal for ALL Staff"]
+    subgraph CentralAuth["Centralized Staff Login Portal"]
+        CentralLogin["Single Login for ALL Staff Roles"]
     end
 
     subgraph Clients["Role-Based Operational Interfaces"]
         AdminView["1. Admin Panel (/admin)"]
-        WaiterView["2. Waiter Dashboard & POS (/waiter-pos)"]
-        CustomerView["3. Customer QR Menu / Tracker (/customer)"]
+        WaiterPOS["2. Waiter Table POS (/waiter-pos)"]
+        CustomerView["3. Customer QR Menu (/customer)"]
         KitchenView["4. Kitchen Display (/kitchen)"]
-        PosView["5. Seller / POS Terminal (/pos)"]
+        SellerPOS["5. Seller POS Terminal (/waiter)"]
     end
 
     subgraph Backend["Express & WebSocket Core (Port 3005)"]
         AuthMiddleware["Auth & RBAC Middleware"]
-        TableSessionMgr["Waiter Session & Table State Mgr"]
+        TenantGuard["Tenant Guard (Auto-Fallback)"]
         OrderPipeline["Unified Order Controller"]
         WSServer["Real-Time WebSocket Broadcast"]
     end
 
-    subgraph Database["Supabase Tenant Schemas (tenant_<slug>)"]
-        StaffTable["staff (role: waiter|sales_staff|kitchen_staff)"]
-        SessionsTable["waiter_sessions"]
-        OrdersTable["orders (order_source: waiter|qr|seller)"]
-    end
-
     CentralLogin -->|role: kitchen_staff| KitchenView
-    CentralLogin -->|role: sales_staff| PosView
-    CentralLogin -->|role: waiter| WaiterView
+    CentralLogin -->|role: sales_staff| SellerPOS
+    CentralLogin -->|role: waiter| WaiterPOS
     CentralLogin -->|role: admin| AdminView
 
-    WaiterView -->|1. Start Table Session| TableSessionMgr
-    WaiterView -->|2. Submit Order (status: pending)| OrderPipeline
-    OrderPipeline -->|3. Broadcast Real-Time Update| WSServer
-    WSServer -->|4. Real-Time Order Appears| PosView
-    PosView -->|5. Confirm / Send to Kitchen| OrderPipeline
-    OrderPipeline -->|6. Kitchen Broadcast| KitchenView
-    PosView -->|7. Settle Bill & Close Session| TableSessionMgr
+    WaiterPOS -->|"Submit Order (restaurantSlug in body)"| OrderPipeline
+    OrderPipeline -->|"Resolve tenant via reqSlug fallback"| WSServer
+    WSServer -->|"ORDER_CREATED broadcast"| SellerPOS
+    WSServer -->|"ORDER_CREATED broadcast"| KitchenView
+    SellerPOS -->|"8s polling safety net"| OrderPipeline
 ```
-
----
-
-### Module Features Built
-
-#### 1. Mobile & Tablet Touch Responsiveness
-- Redesigned [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx) for mobile & tablet touch screens (`max-w-md` & `max-w-2xl` single-column layout).
-- Large touch cards, touch buttons, and seamless vertical scrolling.
-
-#### 2. Floating Basket Button & Cart Drawer Modal
-- When items are added to cart, a bottom floating **"View Basket / Checkout (X items) - Rs Y.YY →"** button appears.
-- Tapping the checkout button opens a slide-up **Cart Review Modal**, allowing waiters to modify item quantities, enter kitchen instructions, and submit the order.
-
-#### 3. Real-Time Seller POS Order Routing
-- Submitting a waiter order sends `status: 'pending'` immediately to the **Seller POS Screen** in real-time.
-- The Seller reviews and confirms/sends the order, triggering its arrival in the **Kitchen KDS Display Screen**.
 
 ---
 
 ## 📁 Key File Locations
 
 ### Backend
-- [api.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/routes/api.js): Central Express API router setup.
-- [waiterSessionController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/waiterSessionController.js): Waiter session start, list, and end endpoints.
-- [WaiterSession.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/models/WaiterSession.js): Model for waiter table sessions.
-- [orderController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/orderController.js): Order creation & auto-close waiter session upon payment.
+- [orderController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/orderController.js): Order creation with `reqSlug` fallback & WebSocket broadcast.
+- [api.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/routes/api.js): Route authorization for all staff roles.
+- [auth.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/middleware/auth.js): Multi-layer restaurant resolution for staff JWT tokens.
+- [tenantGuard.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/middleware/tenantGuard.js): Auto-fallback tenant context for authenticated staff.
+- [staffController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/staffController.js): Staff creation with `waiter` role validation.
+- [authController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/authController.js): Staff JWT with `restaurantSlug` in token payload.
 
 ### Frontend
-- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Mobile/Tablet Waiter POS screen with floating checkout button.
-- [App.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/App.jsx): Centralized staff login routing for all staff roles.
-- [KitchenOrderCard.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/components/kitchen/KitchenOrderCard.jsx): KDS order source badges.
-- [AdminView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/AdminView.jsx): Admin dashboard & staff creation with `waiter` role.
+- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Mobile/tablet touch-responsive Waiter POS with table dropdown, floating basket, cart modal.
+- [WaiterView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterView.jsx): Seller POS with 8s polling + WebSocket real-time sync.
+- [LoginView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/LoginView.jsx): Centralized staff login with role-based redirection.
+- [App.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/App.jsx): Route guards and authenticated role redirection.
