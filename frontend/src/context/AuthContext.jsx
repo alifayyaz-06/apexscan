@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
             ...result.data,
             token: oauthSession.access_token,
           });
-          saveSession(oauthSession.access_token, result.data.role === 'super_admin' ? 'super' : 'admin');
+          saveSession(oauthSession.access_token, result.data.role === 'super_admin' ? 'super' : 'admin', result.data);
           setLoading(false);
           return;
         }
@@ -46,48 +46,67 @@ export function AuthProvider({ children }) {
       }
 
       const session = JSON.parse(stored);
-
-      // Validate the token is still good via /auth/me
-      const res = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
-        headers: { 'Authorization': `Bearer ${session.token}` }
-      });
-
-      if (res.ok) {
-        const result = await res.json();
+      if (session.token) {
         setToken(session.token);
-        setUser({
-          ...result.data,
-          token: session.token,
-        });
-      } else {
-        const errorBody = await res.json().catch(() => ({}));
-        if (errorBody.code === 'SUBSCRIPTION_EXPIRED') {
-          setIsExpired(true);
-          setLoading(false);
-          return;
+        if (session.user) {
+          setUser(session.user);
         }
-        // Token expired or invalid — try Supabase session refresh for admins
-        if (session.authType === 'admin' || session.authType === 'super') {
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          if (newSession) {
-            const meRes = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
-              headers: { 'Authorization': `Bearer ${newSession.access_token}` }
-            });
-            if (meRes.ok) {
-              const result = await meRes.json();
-              const newToken = newSession.access_token;
-              setToken(newToken);
-              setUser({ ...result.data, token: newToken });
-              saveSession(newToken, session.authType);
+      }
+
+      // 3. Asynchronously validate token on server
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
+          headers: { 'Authorization': `Bearer ${session.token}` }
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          setToken(session.token);
+          setUser({
+            ...result.data,
+            token: session.token,
+          });
+          saveSession(session.token, session.authType, result.data);
+        } else {
+          let errorBody = {};
+          try {
+            errorBody = await res.json();
+          } catch (e) {}
+
+          if (errorBody.code === 'SUBSCRIPTION_EXPIRED') {
+            setIsExpired(true);
+            setLoading(false);
+            return;
+          }
+
+          // Explicitly clear session only if backend responds with 401/403
+          if (res.status === 401 || res.status === 403) {
+            if (session.authType === 'admin' || session.authType === 'super') {
+              const { data: { session: newSession } } = await supabase.auth.getSession();
+              if (newSession) {
+                const meRes = await fetch(`${BACKEND_URL}/api/v1/auth/me`, {
+                  headers: { 'Authorization': `Bearer ${newSession.access_token}` }
+                });
+                if (meRes.ok) {
+                  const result = await meRes.json();
+                  const newToken = newSession.access_token;
+                  setToken(newToken);
+                  setUser({ ...result.data, token: newToken });
+                  saveSession(newToken, session.authType, result.data);
+                } else {
+                  clearSession();
+                }
+              } else {
+                clearSession();
+              }
             } else {
               clearSession();
             }
-          } else {
-            clearSession();
           }
-        } else {
-          clearSession();
         }
+      } catch (fetchErr) {
+        console.warn('Network error checking auth status, using cached session:', fetchErr);
+        // Do NOT call clearSession() for network failures!
       }
     } catch (err) {
       console.error('Session restore failed:', err);
@@ -165,9 +184,10 @@ export function AuthProvider({ children }) {
     }
 
     const { token: newToken, user: userData } = result.data;
+    const fullUser = { ...userData, displayName: userData.email };
     setToken(newToken);
-    setUser({ ...userData, displayName: userData.email });
-    saveSession(newToken, 'admin');
+    setUser(fullUser);
+    saveSession(newToken, 'admin', fullUser);
     return userData;
   };
 
@@ -208,7 +228,7 @@ export function AuthProvider({ children }) {
     const { token: newToken, user: userData } = result.data;
     setToken(newToken);
     setUser({ ...userData });
-    saveSession(newToken, 'staff');
+    saveSession(newToken, 'staff', userData);
     return userData;
   };
 
@@ -221,8 +241,8 @@ export function AuthProvider({ children }) {
   };
 
   // ─── Helpers ───
-  const saveSession = (tokenVal, authType) => {
-    localStorage.setItem('smartqr_session', JSON.stringify({ token: tokenVal, authType }));
+  const saveSession = (tokenVal, authType, userData = null) => {
+    localStorage.setItem('smartqr_session', JSON.stringify({ token: tokenVal, authType, user: userData }));
   };
 
   const clearSession = () => {
