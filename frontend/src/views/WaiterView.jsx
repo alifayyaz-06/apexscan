@@ -129,9 +129,15 @@ export default function WaiterView() {
       }
     });
 
+    // Periodic polling as safety net (every 8 seconds)
+    const pollInterval = setInterval(() => {
+      loadLiveOrders();
+    }, 8000);
+
     return () => {
       realTimeSync.off('ORDER_CREATED', onCreated);
       realTimeSync.off('ORDER_UPDATED', onUpdated);
+      clearInterval(pollInterval);
     };
   }, []);
 

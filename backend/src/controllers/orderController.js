@@ -158,8 +158,8 @@ class OrderController {
         });
       }
 
-      // restaurant_id can be UUID or Slug
-      let restaurantParam = verifiedRestaurantId || req.restaurantSlug || req.restaurantId || restaurant_id;
+      // restaurant_id can be UUID or Slug — MUST fall back to reqSlug from body
+      let restaurantParam = verifiedRestaurantId || req.restaurantSlug || req.restaurantId || restaurant_id || reqSlug;
       let client = req.supabase;
       let resolvedRestaurantId = req.restaurantId;
 
