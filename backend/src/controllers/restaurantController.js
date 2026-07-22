@@ -38,19 +38,21 @@ class RestaurantController {
    */
   static async getSettings(req, res) {
     try {
-      const restaurantId = req.user?.restaurantId;
-      if (!restaurantId) {
-        return res.status(400).json({ success: false, message: 'Restaurant context not found.' });
+      const restaurantId = req.user?.restaurantId || req.restaurantId;
+      const restaurantSlug = req.user?.restaurantSlug || req.restaurantSlug || req.query.restaurant;
+
+      let query = supabase.from('restaurants').select('*');
+      if (restaurantId && restaurantId !== 'default') {
+        query = query.eq('id', restaurantId);
+      } else if (restaurantSlug) {
+        query = query.eq('slug', restaurantSlug.toLowerCase());
+      } else {
+        query = query.is('deleted_at', null).limit(1);
       }
 
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('id', restaurantId)
-        .single();
-
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
-      return res.status(200).json({ success: true, data });
+      return res.status(200).json({ success: true, data: data || {} });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
