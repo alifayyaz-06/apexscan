@@ -73,15 +73,15 @@ router.delete('/menu/:id', authenticate, authorize('admin'), tenantGuard, MenuCo
 
 // ─── Order Routes ───
 router.post('/orders', orderLimiter, validate(createOrderSchema), OrderController.createOrder);
-router.get('/orders', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getAllOrders);
-router.get('/orders/active', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getActiveOrders);
+router.get('/orders', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, OrderController.getAllOrders);
+router.get('/orders/active', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, OrderController.getActiveOrders);
 // Public order tracking for customers (no auth required — scoped by restaurant slug query param)
 router.get('/orders/track/:id', OrderController.trackOrder);
 router.get('/orders/table-status/:table', OrderController.checkTableStatus);
-router.get('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, OrderController.getOrderById);
-router.patch('/orders/:id/status', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(updateOrderStatusSchema), OrderController.updateOrderStatus);
-router.post('/orders/:id/pay', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(completePaySchema), OrderController.completeAndPayOrder);
-router.put('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(updateOrderItemsSchema), OrderController.updateOrderItems);
+router.get('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, OrderController.getOrderById);
+router.patch('/orders/:id/status', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, validate(updateOrderStatusSchema), OrderController.updateOrderStatus);
+router.post('/orders/:id/pay', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, validate(completePaySchema), OrderController.completeAndPayOrder);
+router.put('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, validate(updateOrderItemsSchema), OrderController.updateOrderItems);
 
 // ─── Sales Routes ───
 router.get('/sales/summary', authenticate, authorize('admin', 'sales_staff'), tenantGuard, SalesController.getSalesSummary);
