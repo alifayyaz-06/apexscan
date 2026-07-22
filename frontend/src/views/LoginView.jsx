@@ -129,10 +129,14 @@ export default function LoginView() {
     setLoading(true);
     try {
       const userData = await staffLogin(username, staffPass, email);
+      const targetSlug = userData?.restaurantSlug || currentSlug;
+
       if (userData.role === 'kitchen_staff') {
-        window.location.href = currentSlug ? `/r/${currentSlug}/kitchen` : '/kitchen';
+        window.location.href = targetSlug ? `/r/${targetSlug}/kitchen` : '/kitchen';
+      } else if (userData.role === 'waiter') {
+        window.location.href = targetSlug ? `/r/${targetSlug}/waiter-pos` : '/waiter-pos';
       } else {
-        window.location.href = currentSlug ? `/r/${currentSlug}/waiter` : '/waiter';
+        window.location.href = targetSlug ? `/r/${targetSlug}/waiter` : '/waiter';
       }
     } catch (err) {
       setError(err.message);
