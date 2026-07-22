@@ -500,6 +500,62 @@ export default function WaiterView() {
 
     setPosLoading(true);
     try {
+      const activeOrderForTable = manualOrderType === 'dine_in'
+        ? liveOrders.find(o => {
+            if (o.status === 'completed' || o.status === 'cancelled') return false;
+            const tableVal = o.table_name || o.table;
+            const cleanTable = tableVal && (tableVal.startsWith('Table ') ? tableVal : `Table ${tableVal}`);
+            return cleanTable === manualTable;
+          })
+        : null;
+
+      if (activeOrderForTable) {
+        const existingItems = activeOrderForTable.items || [];
+        const mergedItems = [...existingItems];
+        cart.forEach((ci) => {
+          const idx = mergedItems.findIndex((m) => m.id === ci.id);
+          if (idx >= 0) {
+            mergedItems[idx] = { ...mergedItems[idx], quantity: mergedItems[idx].quantity + ci.quantity };
+          } else {
+            mergedItems.push({ id: ci.id, name: ci.name, price: ci.price, quantity: ci.quantity });
+          }
+        });
+
+        const res = await fetch(`${BACKEND_URL}/api/v1/orders/${activeOrderForTable.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders()
+          },
+          body: JSON.stringify({ items: mergedItems })
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast.success(`Successfully added items to existing order for ${manualTable}!`);
+          setCart([]);
+          setManualDiscount(0);
+          setManualOrderNotes('');
+          setManualCustomerName('');
+          setManualCustomerPhone('');
+          setManualDeliveryAddress('');
+          setManualDeliveryArea('');
+          setManualDeliveryCity('');
+          setManualDeliveryInstructions('');
+          setManualRiderId('');
+          setManualTable('Table 1');
+          setManualGuests(1);
+          setManualPickupTime('');
+          setManualOrderType('dine_in');
+          setManualPaymentStatus('paid');
+          setManualPaymentMethod('cash');
+          setIsManualOrderOpen(false);
+          loadLiveOrders();
+        } else {
+          toast.error(result.message || 'Failed to add items to order.');
+        }
+        setPosLoading(false);
+        return;
+      }
       const taxRate = settings && settings.tax_rate !== null ? parseFloat(settings.tax_rate) : 8.00;
       const serviceChargeRate = settings && settings.service_charge !== null ? parseFloat(settings.service_charge) : 5.00;
       
@@ -886,7 +942,14 @@ export default function WaiterView() {
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tax = parseFloat((subtotal * (taxRate / 100)).toFixed(2));
     const serviceChargeVal = parseFloat((subtotal * (serviceChargeRate / 100)).toFixed(2));
-    const grandTotal = parseFloat(Math.max(0, subtotal + tax + serviceChargeVal - parseFloat(manualDiscount || 0)).toFixed(2));
+    const activeOrderForTable = manualOrderType === 'dine_in'
+      ? liveOrders.find(o => {
+          if (o.status === 'completed' || o.status === 'cancelled') return false;
+          const tableVal = o.table_name || o.table;
+          const cleanTable = tableVal && (tableVal.startsWith('Table ') ? tableVal : `Table ${tableVal}`);
+          return cleanTable === manualTable;
+        })
+      : null;
 
     return (
       <div className="fixed inset-0 bg-[#F8F9FA] z-50 flex flex-col text-[#2B2D42] font-sans">
@@ -1148,8 +1211,8 @@ export default function WaiterView() {
                             {Array.from({ length: 12 }, (_, i) => `Table ${i + 1}`).map(t => {
                               const isOccupied = getOccupiedTables().has(t);
                               return (
-                                <option key={t} value={t} disabled={isOccupied}>
-                                  {t} {isOccupied ? ' (Occupied)' : ''}
+                                <option key={t} value={t}>
+                                  {t} {isOccupied ? ' (Active Order)' : ''}
                                 </option>
                               );
                             })}
@@ -1386,7 +1449,7 @@ export default function WaiterView() {
                   disabled={posLoading || cart.length === 0}
                   className="flex-[2] py-3 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-all shadow-md shadow-black/15 disabled:bg-zinc-200 disabled:text-zinc-400 disabled:shadow-none"
                 >
-                  {posLoading ? 'Processing...' : 'Confirm Order'}
+                  {posLoading ? 'Processing...' : (activeOrderForTable ? 'Add to Existing Order' : 'Confirm Order')}
                 </button>
               </div>
             </form>
