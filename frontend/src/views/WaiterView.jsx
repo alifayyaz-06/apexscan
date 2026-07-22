@@ -1609,7 +1609,7 @@ export default function WaiterView() {
                     <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                       <div>
                         <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
+                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}{order.billing?.waiterName ? ` (${order.billing.waiterName})` : ''}</span>
                           <div className="flex flex-wrap items-center gap-1">
                             {getOrderBadges(order).map((b, idx) => (
                               <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1680,7 +1680,7 @@ export default function WaiterView() {
                     <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                       <div>
                         <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
+                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}{order.billing?.waiterName ? ` (${order.billing.waiterName})` : ''}</span>
                           <div className="flex flex-wrap items-center gap-1">
                             {getOrderBadges(order).map((b, idx) => (
                               <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1749,7 +1749,7 @@ export default function WaiterView() {
                     <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                       <div>
                         <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
+                          <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}{order.billing?.waiterName ? ` (${order.billing.waiterName})` : ''}</span>
                           <div className="flex flex-wrap items-center gap-1">
                             {getOrderBadges(order).map((b, idx) => (
                               <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1872,7 +1872,7 @@ export default function WaiterView() {
                   <div key={order.id} className="bg-white border border-zinc-200 p-5 flex flex-col justify-between rounded-2xl shadow-sm">
                     <div>
                       <div className="flex justify-between items-center border-b border-zinc-100 pb-2.5 mb-3">
-                        <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}</span>
+                        <span className="text-black font-bold text-sm">{formatTableDisplay(order.table_name || order.table)}{order.billing?.waiterName ? ` (${order.billing.waiterName})` : ''}</span>
                         <div className="flex flex-wrap items-center gap-1">
                           {getOrderBadges(order).map((b, idx) => (
                             <span key={idx} className={`text-[0.65rem] px-2 py-0.5 font-bold border rounded-lg ${b.className}`}>
@@ -1966,7 +1966,7 @@ export default function WaiterView() {
                         </td>
                         <td className="px-5 py-3.5 font-bold text-black border-b border-zinc-100">
                            <div>
-                             {formatTableDisplay(order.table_name || order.table)}
+                             {formatTableDisplay(order.table_name || order.table)} {order.billing?.waiterName ? `(${order.billing.waiterName})` : ''}
                            </div>
                            <div className="flex flex-wrap gap-1 mt-1.5">
                              {getOrderBadges(order).map((b, idx) => (
