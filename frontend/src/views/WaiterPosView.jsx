@@ -17,12 +17,12 @@ const MUTED = "#8A8580";
 const LINE = "#EBE7E0";
 const WINE = "#7A2331";
 const BG = "#F9F8F6";
-const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
-const SANS = { fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" };
+const SERIF = { fontFamily: "'Roboto Condensed', sans-serif" };
+const SANS = { fontFamily: "'Roboto Condensed', sans-serif" };
 
 function FontImport() {
   return (
-    <style>{`@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');`}</style>
+    <style>{`@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');`}</style>
   );
 }
 

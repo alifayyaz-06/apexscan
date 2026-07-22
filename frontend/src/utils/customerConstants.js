@@ -11,8 +11,8 @@ export const INK = "#171512";
 export const MUTED = "#8A8580";
 export const LINE = "#EBE7E0";
 export const WINE = "#7A2331";
-export const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
-export const SANS = { fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" };
+export const SERIF = { fontFamily: "'Roboto Condensed', sans-serif" };
+export const SANS = { fontFamily: "'Roboto Condensed', sans-serif" };
 
 /**
  * Calculates item totals, taxes, and grand totals for cart

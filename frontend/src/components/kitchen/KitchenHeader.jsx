@@ -1,8 +1,8 @@
 import React from "react";
 import { UtensilsCrossed, Volume2, VolumeX, Maximize2, Minimize2, LogOut } from "lucide-react";
 
-const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
-const SANS = { fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" };
+const SERIF = { fontFamily: "'Roboto Condensed', sans-serif" };
+const SANS = { fontFamily: "'Roboto Condensed', sans-serif" };
 
 export default function KitchenHeader({
   restaurantName,

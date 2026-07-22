@@ -3,7 +3,7 @@ import { Clock, Check } from "lucide-react";
 import { formatOrderId } from "../../utils/formatters";
 import { calculateElapsedMinutes, getKitchenStatusBadge } from "../../utils/kitchenConstants";
 
-const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
+const SERIF = { fontFamily: "'Roboto Condensed', sans-serif" };
 
 export default function KitchenOrderCard({
   order,

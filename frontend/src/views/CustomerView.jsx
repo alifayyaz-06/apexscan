@@ -32,7 +32,7 @@ const BACKEND_URL = API_URL;
 
 function FontImport() {
   return (
-    <style>{`@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');`}</style>
+    <style>{`@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');`}</style>
   );
 }
 

@@ -6,8 +6,8 @@ const INK = "#171512";
 const MUTED = "#8A8580";
 const LINE = "#EBE7E0";
 const WINE = "#7A2331";
-const SERIF = { fontFamily: "'Fraunces', ui-serif, Georgia, serif" };
-const SANS = { fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" };
+const SERIF = { fontFamily: "'Roboto Condensed', sans-serif" };
+const SANS = { fontFamily: "'Roboto Condensed', sans-serif" };
 
 export default function ActiveOrderTracker({ activeOrder, currentTable }) {
   if (!activeOrder) return null;
