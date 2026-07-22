@@ -44,8 +44,8 @@ class StaffController {
         return res.status(400).json({ success: false, message: 'employeeCode, password, and role are required.' });
       }
 
-      if (!['kitchen_staff', 'sales_staff', 'rider'].includes(role)) {
-        return res.status(400).json({ success: false, message: 'Role must be kitchen_staff, sales_staff or rider.' });
+      if (!['kitchen_staff', 'sales_staff', 'waiter', 'rider'].includes(role)) {
+        return res.status(400).json({ success: false, message: 'Role must be kitchen_staff, sales_staff, waiter, or rider.' });
       }
 
       // Hash password
