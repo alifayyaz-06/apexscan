@@ -9,7 +9,7 @@ This document provides a comprehensive overview of the architecture, database sc
 - **Frontend**: React (Vite, TailwindCSS, Lucide Icons, Sonner notifications) running on port `3006`.
 - **Backend**: Node.js, Express, WebSockets (`ws`), Zod Validators, Brevo Email API running on port `3005`.
 - **Database**: Supabase PostgreSQL with Schema-Based Multi-Tenancy (`tenant_<slug>`).
-- **Authentication**: JWT-based session tokens for Staff and Supabase Auth for Restaurant Admins & Super Admin.
+- **Authentication**: Centralized Staff Login Portal for all staff roles (Waiters, Kitchen Staff, Sales POS Staff) & Supabase Auth for Restaurant Admins.
 
 ---
 
@@ -23,7 +23,7 @@ timeline
     v1.2.0 : Real-Time WebSocket Sync : Table Session Locking : Auto-Unlock on Settlement : Public Tracking Endpoint
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
-    v1.5.0 (In Progress) : Waiter Module Integration : Waiter Management (Admin) : Waiter Table Session Grid : Tablet POS Ordering : Auto-Release on Payment
+    v1.5.0 (In Progress) : Waiter Module Integration : Centralized Staff Login Portal : Waiter Table Session Grid : Tablet POS Ordering : Auto-Release on Payment
 ```
 
 ---
@@ -36,12 +36,16 @@ Implement a fully integrated, multi-tenant **Waiter Ordering Module** into the e
 
 ```mermaid
 flowchart TD
-    subgraph Clients["5 Operational Interfaces"]
-        AdminView["1. Admin Panel"]
-        WaiterView["2. Waiter Dashboard & POS (New)"]
-        CustomerView["3. Customer QR Menu / Tracker"]
-        KitchenView["4. Kitchen Display (KDS)"]
-        PosView["5. Seller / POS Terminal"]
+    subgraph CentralAuth["Centralized Staff Login Portal (/login or /r/:slug/login)"]
+        CentralLogin["Single Login Portal for ALL Staff"]
+    end
+
+    subgraph Clients["Role-Based Operational Interfaces"]
+        AdminView["1. Admin Panel (/admin)"]
+        WaiterView["2. Waiter Dashboard & POS (/waiter-pos)"]
+        CustomerView["3. Customer QR Menu / Tracker (/customer)"]
+        KitchenView["4. Kitchen Display (/kitchen)"]
+        PosView["5. Seller / POS Terminal (/pos)"]
     end
 
     subgraph Backend["Express & WebSocket Core (Port 3005)"]
@@ -52,22 +56,25 @@ flowchart TD
     end
 
     subgraph Database["Supabase Tenant Schemas (tenant_<slug>)"]
-        StaffTable["staff (role: waiter)"]
+        StaffTable["staff (role: waiter|sales_staff|kitchen_staff)"]
         SessionsTable["waiter_sessions"]
         OrdersTable["orders (order_source: waiter|qr|seller)"]
-        RestaurantsTable["public.restaurants"]
     end
 
-    WaiterView -->|1. Login & Token| AuthMiddleware
-    WaiterView -->|2. Start Table Session| TableSessionMgr
-    WaiterView -->|3. Submit Order (source: waiter)| OrderPipeline
-    CustomerView -->|4. Scan QR (Checks Active Session)| TableSessionMgr
-    OrderPipeline -->|5. Store Order| OrdersTable
-    OrderPipeline -->|6. Broadcast Update| WSServer
-    WSServer -->|7. Live Sync| KitchenView
-    WSServer -->|8. Live Sync| PosView
-    WSServer -->|9. Live Sync| CustomerView
-    PosView -->|10. Settle Bill & Close Session| TableSessionMgr
+    CentralLogin -->|role: kitchen_staff| KitchenView
+    CentralLogin -->|role: sales_staff| PosView
+    CentralLogin -->|role: waiter| WaiterView
+    CentralLogin -->|role: admin| AdminView
+
+    WaiterView -->|1. Start Table Session| TableSessionMgr
+    WaiterView -->|2. Submit Order (source: waiter)| OrderPipeline
+    CustomerView -->|3. Scan QR (Checks Active Session)| TableSessionMgr
+    OrderPipeline -->|4. Store Order| OrdersTable
+    OrderPipeline -->|5. Broadcast Update| WSServer
+    WSServer -->|6. Live Sync| KitchenView
+    WSServer -->|7. Live Sync| PosView
+    WSServer -->|8. Live Sync| CustomerView
+    PosView -->|9. Settle Bill & Close Session| TableSessionMgr
 ```
 
 ---
@@ -82,13 +89,16 @@ flowchart TD
   - Edit waiter details, toggle Active/Inactive status, and reset passwords.
   - Display active table sessions currently assigned to each waiter.
 
-#### 2. Module 2: Waiter Authentication & Role Protection
-- **Backend File**: `auth.js` & `authController.js`
+#### 2. Module 2: Centralized Staff Authentication & Role Redirection
+- **Files**: `LoginView.jsx`, `App.jsx`, `auth.js`
 - **Features**:
-  - Dedicated login payload at `/api/v1/auth/staff/login` with `role: "waiter"`.
-  - Issued JWT contains: `{ staffId, restaurantId, restaurantSlug, role: "waiter" }`.
-  - Protected API routes using `authorize('waiter')` or `authorize('admin', 'waiter')`.
-  - Waiters are restricted from Admin analytics, platform settings, Super Admin APIs, and system configuration.
+  - **Single Centralized Login Portal**: ALL staff roles (`kitchen_staff`, `sales_staff`, `waiter`, `admin`) log in from the **same single login page** (`/login` or `/r/:restaurantSlug/login`). No separate login page for waiters.
+  - **Role-Based Auto-Redirection**:
+    - `kitchen_staff` → Redirected to Kitchen KDS (`/kitchen`).
+    - `sales_staff` → Redirected to Seller/POS Terminal (`/pos`).
+    - `waiter` → Redirected to Waiter Table Dashboard & POS (`/waiter-pos`).
+    - `admin` → Redirected to Admin Dashboard (`/admin`).
+  - Protected API routes using `authorize('waiter')` middleware. Waiters are restricted from Admin analytics, platform settings, Super Admin APIs, and system configuration.
 
 #### 3. Module 3 & 4: Waiter Table Dashboard & Session Management
 - **New Controller File**: `waiterSessionController.js`
