@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import {
   LayoutDashboard, UtensilsCrossed, ClipboardList, BarChart3, QrCode,
   Plus, Pencil, Trash2, X, Search, Printer, Download, ChevronDown,
-  Upload, ImageIcon, Loader2, Users, Key, Settings
+  Upload, ImageIcon, Loader2, Users, Key, Settings,
+  ShoppingBag, DollarSign, TrendingUp, Flame, Calendar, Percent, Activity, CheckCircle2
 } from 'lucide-react';
 
 import { API_URL } from '../utils/config';
@@ -27,7 +28,8 @@ const STATUS_COLORS = {
 
 export default function AdminView() {
   const { user, logout, authHeaders } = useAuth();
-  const [activeTab, setActiveTab] = useState('menu');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [dashboardChartTab, setDashboardChartTab] = useState('today');
 
   const handleLaunchTerminal = async (terminalType) => {
     const targetSlug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
@@ -723,7 +725,81 @@ export default function AdminView() {
     items: menuItems.filter(i => i.category === cat)
   }));
 
+  const getDashboardMetrics = () => {
+    const todaySales = salesData?.metrics?.today?.revenue || 0;
+    const todayOrdersCount = salesData?.metrics?.today?.count || 0;
+
+    const activeOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
+    const occupiedTablesSet = new Set(
+      activeOrders
+        .map(o => o.table_name || o.table)
+        .filter(Boolean)
+        .map(t => String(t).replace(/^(table\s*)+/i, '').trim())
+    );
+    const activeTablesCount = occupiedTablesSet.size;
+
+    const occupiedTablesList = Array.from(new Set(
+      activeOrders
+        .filter(o => ['confirmed', 'cooking', 'ready', 'served'].includes(o.status))
+        .map(o => o.table_name || o.table)
+        .filter(Boolean)
+        .map(t => String(t).replace(/^(table\s*)+/i, '').trim())
+    ));
+    const occupiedTablesCount = occupiedTablesList.length;
+    const availableTablesCount = Math.max(0, tableCount - activeTablesCount);
+
+    const kitchenPendingCount = orders.filter(o => ['pending', 'confirmed', 'cooking'].includes(o.status)).length;
+    const completedOrdersCount = orders.filter(o => o.status === 'completed').length;
+
+    const totalCompletedRevenue = orders
+      .filter(o => o.status === 'completed')
+      .reduce((sum, o) => sum + (o.billing?.total || 0), 0);
+    const averageOrderValue = completedOrdersCount > 0 ? (totalCompletedRevenue / completedOrdersCount) : 0;
+
+    const recentOrdersList = [...orders]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 5);
+
+    return {
+      todaySales,
+      todayOrdersCount,
+      activeTablesCount,
+      occupiedTablesCount,
+      availableTablesCount,
+      kitchenPendingCount,
+      completedOrdersCount,
+      averageOrderValue,
+      recentOrdersList
+    };
+  };
+
+  const getPeakOrderingHour = () => {
+    if (!orders || orders.length === 0) return 'N/A';
+    const hourCounts = {};
+    orders.forEach(o => {
+      const date = new Date(o.timestamp);
+      const hour = date.getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+    let peakHour = null;
+    let maxCount = 0;
+    Object.entries(hourCounts).forEach(([hour, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        peakHour = parseInt(hour);
+      }
+    });
+    if (peakHour === null) return 'N/A';
+    const formatHour = (h) => {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const displayHour = h % 12 === 0 ? 12 : h % 12;
+      return `${displayHour}:00 ${ampm}`;
+    };
+    return `${formatHour(peakHour)} - ${formatHour((peakHour + 1) % 24)}`;
+  };
+
   const tabs = [
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'menu', label: 'Menu Editor', icon: UtensilsCrossed },
     { key: 'orders', label: 'All Orders', icon: ClipboardList },
     { key: 'sales', label: 'Sales Analytics', icon: BarChart3 },
@@ -799,6 +875,7 @@ export default function AdminView() {
           <div>
             <h2 className="text-lg font-bold text-[#2B2D42]">{tabs.find(t => t.key === activeTab)?.label}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
+              {activeTab === 'dashboard' && "Restaurant's real-time performance dashboard"}
               {activeTab === 'menu' && `${menuItems.length} items across ${catsToDisplay.length} categories`}
               {activeTab === 'orders' && `${filteredOrders.length} orders`}
               {activeTab === 'sales' && 'Revenue & analytics overview'}
@@ -818,6 +895,302 @@ export default function AdminView() {
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {/* TAB 1: MENU EDITOR                              */}
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* TAB 0: DASHBOARD OVERVIEW                      */}
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {activeTab === 'dashboard' && (() => {
+          const metrics = getDashboardMetrics();
+          const chartData = salesData?.charts?.[dashboardChartTab] || [];
+          const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
+
+          return (
+            <div className="animate-fade-in flex flex-col gap-8">
+              {/* Widgets Row 1 - Performance Metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* 1. Today's Revenue */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
+                  <div className="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                    <DollarSign size={22} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Sales</span>
+                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">Rs {metrics.todaySales.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* 2. Today's Orders */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
+                  <div className="h-12 w-12 bg-rose-50 text-[#E63946] rounded-xl flex items-center justify-center shrink-0">
+                    <ShoppingBag size={20} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Orders Today</span>
+                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">{metrics.todayOrdersCount}</span>
+                  </div>
+                </div>
+
+                {/* 3. Average Order Value */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
+                  <div className="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                    <TrendingUp size={20} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Avg Order Value</span>
+                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">Rs {metrics.averageOrderValue.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* 4. Completed Orders */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
+                  <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Completed Orders</span>
+                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">{metrics.completedOrdersCount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Widgets Row 2 - Tables Status & Kitchen */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* 5. Active Tables */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Tables</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.activeTablesCount}</span>
+                    <span className="text-xs text-slate-400 block mt-1">Tables with live orders</span>
+                  </div>
+                </div>
+
+                {/* 6. Occupied Tables */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Occupied Tables</span>
+                    <span className="text-xs font-bold px-2 py-0.5 bg-rose-50 text-[#E63946] border border-rose-100 rounded-full">Seated</span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.occupiedTablesCount}</span>
+                    <span className="text-xs text-slate-400 block mt-1">Confirmed & cooking sessions</span>
+                  </div>
+                </div>
+
+                {/* 7. Available Tables */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Tables</span>
+                    <span className="text-xs font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full">Free</span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.availableTablesCount}</span>
+                    <span className="text-xs text-slate-400 block mt-1">Ready for seating (out of {tableCount})</span>
+                  </div>
+                </div>
+
+                {/* 8. Kitchen Pending Orders */}
+                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kitchen Queue</span>
+                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.kitchenPendingCount}</span>
+                    <span className="text-xs text-slate-400 block mt-1">Orders in pending/prep queue</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Analytics: Revenue Chart vs. Top Items */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Revenue Chart Widget */}
+                <div className="lg:col-span-2 bg-white border border-slate-150 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.03)] flex flex-col justify-between min-h-[380px]">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+                    <div>
+                      <h3 className="text-base font-bold text-[#2B2D42]">Revenue Trends</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">Performance tracking chart</p>
+                    </div>
+                    {/* Chart Selector buttons */}
+                    <div className="flex bg-slate-50 border border-slate-200 rounded-xl p-1 gap-1">
+                      <button
+                        onClick={() => setDashboardChartTab('today')}
+                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
+                          dashboardChartTab === 'today' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-black'
+                        }`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={() => setDashboardChartTab('week')}
+                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
+                          dashboardChartTab === 'week' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-black'
+                        }`}
+                      >
+                        Weekly
+                      </button>
+                      <button
+                        onClick={() => setDashboardChartTab('month')}
+                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
+                          dashboardChartTab === 'month' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-black'
+                        }`}
+                      >
+                        Monthly
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* SVG / Custom HTML Bar Graph */}
+                  {chartData.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center text-slate-400 italic text-sm py-20">
+                      No sales records for this period.
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col justify-end">
+                      {/* Bar Bars Row */}
+                      <div className="flex items-end gap-3.5 sm:gap-4 h-56 px-2 relative border-b border-slate-100">
+                        {/* Horizontal Gridlines */}
+                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-1">
+                          <div className="border-t border-dashed border-slate-100 w-full"></div>
+                          <div className="border-t border-dashed border-slate-100 w-full"></div>
+                          <div className="border-t border-dashed border-slate-100 w-full"></div>
+                          <div className="border-t border-dashed border-slate-100 w-full"></div>
+                        </div>
+
+                        {chartData.map((item, index) => {
+                          const percentage = (item.amount / maxChartAmount) * 100;
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center group relative z-5">
+                              {/* Tooltip Popup on Hover */}
+                              <div className="absolute bottom-full mb-2 bg-black text-white text-[10px] font-black py-1.5 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                                <span className="block text-center font-mono">Rs {item.amount.toFixed(2)}</span>
+                                <span className="block text-center text-[8px] text-zinc-400 mt-0.5">{item.count} Orders</span>
+                              </div>
+                              {/* Vertical Bar */}
+                              <div 
+                                style={{ height: `${Math.max(4, percentage)}%` }}
+                                className="w-full rounded-t-lg bg-gradient-to-t from-[#E63946] to-[#FF6B35] group-hover:from-[#2B2D42] group-hover:to-[#2B2D42] transition-all cursor-pointer shadow-sm relative overflow-hidden"
+                              >
+                                <div className="absolute inset-y-0 left-0 w-1/3 bg-white/10 skew-x-12"></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* X-Axis Labels Row */}
+                      <div className="flex gap-3.5 sm:gap-4 px-2 mt-3 pt-1">
+                        {chartData.map((item, index) => (
+                          <div key={index} className="flex-1 text-center text-[10px] font-bold text-slate-400 truncate">
+                            {item.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Top Selling Items & Quick Analytics */}
+                <div className="flex flex-col gap-6">
+                  {/* Top Items Widget */}
+                  <div className="bg-white border border-slate-150 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.03)] flex-1 flex flex-col">
+                    <h3 className="text-base font-bold text-[#2B2D42] border-b border-slate-100 pb-3 mb-4">Top Selling Items</h3>
+                    {(!salesData?.topItems || salesData.topItems.length === 0) ? (
+                      <div className="flex-1 flex items-center justify-center text-slate-400 italic text-xs">
+                        No item metrics computed yet.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4 flex-1 justify-center">
+                        {salesData.topItems.map((item, index) => {
+                          const totalSold = salesData.topItems.reduce((sum, i) => sum + i.quantity, 0) || 1;
+                          const sharePct = (item.quantity / totalSold) * 100;
+                          return (
+                            <div key={index} className="flex flex-col gap-1">
+                              <div className="flex justify-between items-center text-xs font-bold text-[#2B2D42]">
+                                <span className="truncate">{item.name}</span>
+                                <span className="text-slate-400 font-mono shrink-0 ml-2">{item.quantity} sold</span>
+                              </div>
+                              <div className="h-2 w-full bg-slate-50 border border-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  style={{ width: `${sharePct}%` }}
+                                  className="h-full bg-gradient-to-r from-[#E63946] to-[#FF6B35] rounded-full"
+                                ></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Busiest Peak Hour Widget */}
+                  <div className="bg-gradient-to-br from-[#E63946] to-[#FF6B35] text-white p-6 rounded-2xl shadow-xl flex items-center gap-4 shrink-0">
+                    <div className="h-12 w-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                      <Flame size={22} className="text-white" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider block text-white/70">Peak Ordering Hours</span>
+                      <span className="text-lg font-black mt-0.5 block">{getPeakOrderingHour()}</span>
+                      <span className="text-[9px] font-semibold text-white/60 block mt-0.5">Based on all historical order volumes</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Orders Section */}
+              <div className="bg-white border border-slate-150 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.03)]">
+                <h3 className="text-base font-bold text-[#2B2D42] border-b border-slate-100 pb-3 mb-5">Recent Orders</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[#2B2D42]">
+                    <thead>
+                      <tr className="uppercase bg-slate-50 text-slate-400 font-black border-b border-slate-100">
+                        <th className="px-4 py-3.5 rounded-l-xl">Order ID</th>
+                        <th className="px-4 py-3.5">Table</th>
+                        <th className="px-4 py-3.5">Items</th>
+                        <th className="px-4 py-3.5">Total</th>
+                        <th className="px-4 py-3.5">Status</th>
+                        <th className="px-4 py-3.5 text-right rounded-r-xl">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {metrics.recentOrdersList.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="text-center py-8 text-slate-400 italic">No orders received yet.</td>
+                        </tr>
+                      ) : (
+                        metrics.recentOrdersList.map(order => (
+                          <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
+                            <td className="px-4 py-3 font-bold">
+                              Table {String(order.table_name || order.table).replace(/[^0-9]/g, '')}
+                              {order.billing?.waiterName && (
+                                <span className="text-[9px] text-slate-400 block font-normal mt-0.5">Waiter: {order.billing.waiterName}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 font-medium">
+                              {order.items?.map(i => `${i.name} (x${i.quantity})`).join(', ') || '0 Items'}
+                            </td>
+                            <td className="px-4 py-3 font-bold font-mono">Rs {order.billing?.total?.toFixed(2) || '0.00'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 border text-[9px] font-bold rounded-full uppercase tracking-wider ${STATUS_COLORS[order.status || 'pending']}`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-400 font-semibold">
+                              {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {activeTab === 'menu' && (
           <div className="animate-fade-in">
             <div className="flex items-center justify-between mb-8">
