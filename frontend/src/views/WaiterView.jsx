@@ -942,6 +942,7 @@ export default function WaiterView() {
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tax = parseFloat((subtotal * (taxRate / 100)).toFixed(2));
     const serviceChargeVal = parseFloat((subtotal * (serviceChargeRate / 100)).toFixed(2));
+    const grandTotal = parseFloat(Math.max(0, subtotal + tax + serviceChargeVal - parseFloat(manualDiscount || 0)).toFixed(2));
     const activeOrderForTable = manualOrderType === 'dine_in'
       ? liveOrders.find(o => {
           if (o.status === 'completed' || o.status === 'cancelled') return false;
