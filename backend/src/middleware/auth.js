@@ -21,12 +21,34 @@ async function authenticate(req, res, next) {
       const decoded = jwt.verify(token, JWT_SECRET);
       if (decoded.staffId) {
         // Staff details exist in their private restaurant schema!
-        // We resolve their restaurant slug first by querying the global public.restaurants
-        const { data: restaurant } = await defaultClient
-          .from('restaurants')
-          .select('id, name, slug, logo_url, is_active, subscription_status, expires_at')
-          .eq('id', decoded.restaurantId)
-          .maybeSingle();
+        let restaurant = null;
+        if (decoded.restaurantId) {
+          const { data } = await defaultClient
+            .from('restaurants')
+            .select('id, name, slug, logo_url, is_active, subscription_status, expires_at')
+            .eq('id', decoded.restaurantId)
+            .maybeSingle();
+          restaurant = data;
+        }
+
+        if (!restaurant && decoded.restaurantSlug) {
+          const { data } = await defaultClient
+            .from('restaurants')
+            .select('id, name, slug, logo_url, is_active, subscription_status, expires_at')
+            .eq('slug', decoded.restaurantSlug)
+            .maybeSingle();
+          restaurant = data;
+        }
+
+        if (!restaurant) {
+          const { data } = await defaultClient
+            .from('restaurants')
+            .select('id, name, slug, logo_url, is_active, subscription_status, expires_at')
+            .is('deleted_at', null)
+            .limit(1)
+            .maybeSingle();
+          restaurant = data;
+        }
 
         if (!restaurant || !restaurant.is_active) {
           return res.status(403).json({ success: false, message: 'Restaurant account deactivated or not found.' });

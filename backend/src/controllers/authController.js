@@ -260,6 +260,7 @@ class AuthController {
       const tokenPayload = {
         staffId: staffMember.id,
         restaurantId: restaurant.id,
+        restaurantSlug: restaurant.slug,
         role: staffMember.role,
         employeeCode: staffMember.employee_code,
         displayName: staffMember.display_name
