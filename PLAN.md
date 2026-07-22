@@ -1,6 +1,6 @@
 # Smart QR Ordering System — Complete System Specification & Version Changelog
 
-This document provides a comprehensive overview of the architecture, database schema, security model, and complete version history for the **Smart QR Ordering System**.
+This document provides a comprehensive overview of the architecture, database schema, security model, and complete version history for the **Smart QR Ordering System**, including the upcoming **Waiter Module Integration (v1.5.0)**.
 
 ---
 
@@ -23,73 +23,143 @@ timeline
     v1.2.0 : Real-Time WebSocket Sync : Table Session Locking : Auto-Unlock on Settlement : Public Tracking Endpoint
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
+    v1.5.0 (In Progress) : Waiter Module Integration : Waiter Management (Admin) : Waiter Table Session Grid : Tablet POS Ordering : Auto-Release on Payment
 ```
 
 ---
 
-### 🚀 Version 1.0.0 — Multi-Tenant Core Architecture & Base Ordering
+## 📋 Implementation Plan — Integrated Waiter Ordering Module (v1.5.0)
 
-#### **Key Capabilities**
-- **Multi-Tenant Schema Isolation**: Supported multi-tenant database partitioning. Each restaurant tenant operates under its dedicated PostgreSQL schema (e.g. `tenant_cheezious`, `tenant_gourmet_bistro_main`).
-- **Dynamic Tenant Routing**: System routes API calls by tenant slug passed in the URL path (`/r/:restaurantSlug/...`), query parameters, or JWT claims.
-- **Role-Based Access Control (RBAC)**:
-  - `super_admin`: Platform Owner managing restaurant tenants, subscriptions, and global settings.
-  - `admin`: Restaurant Owner managing staff, menu items, table counts, and sales analytics.
-  - `kitchen_staff`: KDS interface to update live order status (`pending` → `confirmed` → `cooking` → `ready`).
-  - `sales_staff`: POS terminal for counter orders (Takeaway, Delivery, Dine-In).
-  - `customer`: Public browser view for menu browsing and cart checkout.
-- **Server Resilience & Monitoring**: Added DNS IPv4 prioritization, Brevo SMTP fallback, and light UptimeRobot health check endpoints (`/health`, `/api/v1/health`).
+Implement a fully integrated, multi-tenant **Waiter Ordering Module** into the existing **Smart QR Ordering System**. The Waiter Module operates seamlessly alongside Customer QR Ordering, Kitchen KDS, and Seller POS without duplicating business logic, billing pipelines, or database architectures.
 
----
+### Architecture Overview & Data Flow
 
-### 🔒 Version 1.1.0 — Secure Random Table Codes & URL Tamper Protection
+```mermaid
+flowchart TD
+    subgraph Clients["5 Operational Interfaces"]
+        AdminView["1. Admin Panel"]
+        WaiterView["2. Waiter Dashboard & POS (New)"]
+        CustomerView["3. Customer QR Menu / Tracker"]
+        KitchenView["4. Kitchen Display (KDS)"]
+        PosView["5. Seller / POS Terminal"]
+    end
 
-#### **Problem Addressed**
-Previously, QR codes used sequential numeric table parameters (`?table=1`, `?table=2`). Customers could tamper with the URL query parameter to place orders on other tables.
+    subgraph Backend["Express & WebSocket Core (Port 3005)"]
+        AuthMiddleware["Auth & RBAC Middleware"]
+        TableSessionMgr["Waiter Session & Table State Mgr"]
+        OrderPipeline["Unified Order Controller"]
+        WSServer["Real-Time WebSocket Broadcast"]
+    end
 
-#### **Key Capabilities**
-- **6-Character Random Table Codes**: Replaced sequential table numbers with non-guessable 6-character alphanumeric codes (`?table=X9QK72`, `?table=AF93DK`), filtering out ambiguous characters (`0`, `O`, `1`, `I`).
-- **Automatic 404 Resolution Guard**: Requesting invalid or unassigned table codes returns `404 Access Denied`, preventing unauthorized menu/table access.
-- **Signed Table Session JWTs**: Upon QR verification, backend issues a signed JWT token bound to the table identity.
-- **Batch Table Code Endpoint (`GET /api/v1/qr/tables`)**: Allows the Admin panel to load table codes efficiently in one API request.
-- **Single-Table Code Regeneration**: Admins can reset a table's code on demand with a confirmation warning modal, invalidating stolen or compromised physical QR stands.
+    subgraph Database["Supabase Tenant Schemas (tenant_<slug>)"]
+        StaffTable["staff (role: waiter)"]
+        SessionsTable["waiter_sessions"]
+        OrdersTable["orders (order_source: waiter|qr|seller)"]
+        RestaurantsTable["public.restaurants"]
+    end
 
----
-
-### ⚡ Version 1.2.0 — Real-Time WebSocket Sync & Table Session Locking
-
-#### **Key Capabilities**
-- **Table Session Lock (`TableOccupiedOverlay.jsx`)**: When a customer is actively dining at Table X with an unpaid order, scanning Table X's QR code on another device displays a session lock screen.
-- **WebSocket Synchronization (`server.js` & `socket.js`)**: Backend broadcasts real-time `ORDER_UPDATED` events to all clients registered to the restaurant channel (`realTimeSync.registerRestaurant`).
-- **Auto-Unlock on Payment**: Completing and settling a table bill (`completeAndPayOrder`) automatically regenerates the table code and sends a WebSocket message unlocking the table for new guests.
-- **Public Order Tracking (`GET /api/v1/orders/track/:id`)**: Enables token-less order status polling for customer devices after page reloads.
-
----
-
-### 🎨 Version 1.3.0 — Customer Stepper Tracker & Strict Order Lock
-
-#### **Key Capabilities**
-- **5-Step Order Stepper Tracker (`ActiveOrderTracker.jsx`)**: Reintroduced a visual status stepper modal tracking order progression:
-  1. `Order Placed`: Order submitted to kitchen.
-  2. `Confirmed`: Accepted by kitchen.
-  3. `Preparing`: Chef is cooking.
-  4. `Ready`: Order is ready for table pickup/delivery.
-  5. `Served`: Delivered to customer.
-- **Strict Customer Order Lock**: Once an order is placed, the menu grid and cart drawer are hidden, replaced by the order tracker overlay. Customers cannot modify items or add extra items until the current order is settled.
-- **Refresh & Navigation Guard**: Attached `beforeunload` event handler and `popstate` history push to prevent accidental tab closing or back button navigation during active orders.
-- **Thank-You Screen (`PaidThankYouOverlay.jsx`)**: Automatically triggers a thank-you screen when an order is completed, before resetting state for the next session.
+    WaiterView -->|1. Login & Token| AuthMiddleware
+    WaiterView -->|2. Start Table Session| TableSessionMgr
+    WaiterView -->|3. Submit Order (source: waiter)| OrderPipeline
+    CustomerView -->|4. Scan QR (Checks Active Session)| TableSessionMgr
+    OrderPipeline -->|5. Store Order| OrdersTable
+    OrderPipeline -->|6. Broadcast Update| WSServer
+    WSServer -->|7. Live Sync| KitchenView
+    WSServer -->|8. Live Sync| PosView
+    WSServer -->|9. Live Sync| CustomerView
+    PosView -->|10. Settle Bill & Close Session| TableSessionMgr
+```
 
 ---
 
-### 🧹 Version 1.4.0 — Uniform Order IDs & Admin UI Refinements
+### Module Specifications & Technical Changes
 
-#### **Key Capabilities**
-- **Standardized Order ID Format**: Replaced raw database UUID strings across all views with formatted, user-friendly invoice numbers (`INV-YYYYMMDD-001`) via `formatOrderId`.
-- **Admin Order History Clean-Up**:
-  - Replaced duplicate `Table Table X` string clutter with clean **Order Type** badges (`Takeaway`, `Delivery`, `Dine-In`).
-  - Added receipt timestamp formatting (`formatReceiptDate`).
-  - Removed redundant `Items` column from the Admin Order History table as requested.
-- **Validation & Proxy Enhancements**: Added `.passthrough()` to Zod order schemas in `order.schemas.js` and added API proxying in `vite.config.js`.
+#### 1. Module 1: Waiter Management (Admin Panel)
+- **File**: `AdminStaffTab.jsx` & `AdminView.jsx`
+- **Features**:
+  - Filter and manage staff accounts with `role: "waiter"`.
+  - Create Waiter Account (`employeeCode`, `displayName`, `password`, `phone`, `employee_id`, `role: "waiter"`).
+  - Edit waiter details, toggle Active/Inactive status, and reset passwords.
+  - Display active table sessions currently assigned to each waiter.
+
+#### 2. Module 2: Waiter Authentication & Role Protection
+- **Backend File**: `auth.js` & `authController.js`
+- **Features**:
+  - Dedicated login payload at `/api/v1/auth/staff/login` with `role: "waiter"`.
+  - Issued JWT contains: `{ staffId, restaurantId, restaurantSlug, role: "waiter" }`.
+  - Protected API routes using `authorize('waiter')` or `authorize('admin', 'waiter')`.
+  - Waiters are restricted from Admin analytics, platform settings, Super Admin APIs, and system configuration.
+
+#### 3. Module 3 & 4: Waiter Table Dashboard & Session Management
+- **New Controller File**: `waiterSessionController.js`
+- **New Model File**: `WaiterSession.js`
+- **Features**:
+  - Color-coded Table Status Grid:
+    - 🟢 **Available**: Unoccupied table ready for QR scanning or Waiter assignment.
+    - 🟠 **Occupied by Waiter**: Waiter active session in progress.
+    - 🔵 **Customer Ordering**: Self-ordering customer active.
+    - 🟡 **Kitchen Preparing**: Order sent to kitchen.
+    - 🟣 **Ready**: Food ready for serving.
+    - 🔴 **Billing**: Bill printed/pending settlement.
+  - "Start serving Table X?" modal triggers `POST /api/v1/waiter/sessions/start`.
+  - Stores `waiter_id`, `table_id`, `restaurant_id`, `started_at`, `status: "active"`.
+
+#### 4. Module 5 & 10: QR Scan Behavior & Customer Order Tracking
+- **File**: `CustomerView.jsx` & `orderController.js`
+- **Features**:
+  - On QR scan (`GET /api/v1/orders/table-status/:table`), backend checks if an active `waiter_session` or active `order` exists.
+  - **If Waiter Session Active**: Customer menu is locked. Customer is redirected to a live Tracking Page:
+    - Displays: *"Your waiter [Waiter Name] is taking your order"*, Table Number, Order Status, and Item list.
+    - Prevents customer duplicate ordering.
+  - **If Available**: Shows standard Customer QR Ordering menu.
+
+#### 5. Module 6 & 7: Waiter POS Ordering Interface & Submit Order
+- **New View File**: `WaiterPosView.jsx`
+- **Features**:
+  - Tablet-optimized POS UI:
+    - Left Column: Categories sidebar.
+    - Center Grid: Menu item cards with photos, prices, size variants, and touch buttons.
+    - Right Column: Live Cart drawer (items, quantities, size choices, special instructions, order notes).
+  - Reuses `POST /api/v1/orders` with fields:
+    - `order_source: "waiter"`
+    - `waiter_id`: authenticated waiter ID
+    - `session_id`: active waiter session ID
+    - `table_name` / `table`: target table
+
+#### 6. Module 8, 9 & 11: Kitchen, Seller/POS Integration & Auto-Settlement
+- **Files**: `KitchenView.jsx`, `WaiterView.jsx` (Seller POS)
+- **Features**:
+  - **Kitchen KDS**: Displays order badge: `QR`, `WAITER`, or `SELLER`. Unified queue for all order sources.
+  - **Seller POS**: Displays waiter name, table, items, and `WAITER` badge. Seller handles discount, tax, payment (`cash`/`card`), and bill printing.
+  - **Auto-Session Release**: When Seller completes payment (`completeAndPayOrder`), the order status becomes `completed`, the active waiter session automatically ends, the table status returns to 🟢 **Available**, and the customer QR code unlocks for fresh orders.
+
+#### 7. Module 12: Real-Time WebSocket Synchronization
+- **File**: `server.js` & `socket.js`
+- **Features**:
+  - Broadcasts `WAITER_SESSION_STARTED`, `ORDER_CREATED`, `ORDER_UPDATED`, and `BILL_PAID` across all active clients (Waiter, Seller, Kitchen, Customer, Admin) in real-time.
+
+---
+
+### Database Changes (Supabase Schema)
+
+#### 1. `waiter_sessions` Table (Added to `tenant_<slug>` schemas)
+```sql
+CREATE TABLE IF NOT EXISTS waiter_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  waiter_id UUID NOT NULL,
+  table_id VARCHAR(50) NOT NULL,
+  restaurant_id UUID,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  ended_at TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(20) DEFAULT 'active', -- 'active' | 'closed'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+#### 2. `orders` Table Extensions
+- `waiter_id` (UUID, nullable)
+- `session_id` (UUID, nullable)
+- `order_source` (VARCHAR(30) DEFAULT 'qr') -- `'qr'`, `'waiter'`, `'seller'`, `'takeaway'`, `'delivery'`
 
 ---
 
