@@ -11,6 +11,7 @@ import {
 import { API_URL } from '../utils/config';
 import { formatOrderId, formatReceiptDate } from '../utils/formatters';
 import { generateTableCodeFallback } from '../utils/customerConstants';
+import { realTimeSync } from '../utils/socket';
 
 const BACKEND_URL = API_URL;
 
@@ -435,6 +436,61 @@ export default function AdminView() {
     loadSales();
     loadStaff();
     loadSettings();
+
+    // Register with WebSocket for real-time updates
+    if (user?.restaurantSlug) {
+      realTimeSync.registerRestaurant(user.restaurantSlug, user.role);
+    } else if (user?.restaurantId) {
+      realTimeSync.registerRestaurant(user.restaurantId, user.role);
+    }
+
+    const onCreated = realTimeSync.on('ORDER_CREATED', (payload) => {
+      const myId = user?.restaurantId;
+      const mySlug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
+      const hasIdMatch = myId && payload.restaurantId && String(payload.restaurantId).toLowerCase() === String(myId).toLowerCase();
+      const hasSlugMatch = mySlug && payload.restaurantSlug && String(payload.restaurantSlug).toLowerCase() === String(mySlug).toLowerCase();
+      if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
+
+      const order = payload.order;
+      if (order) {
+        setOrders(prev => [order, ...prev]);
+      }
+      loadSales();
+    });
+
+    const onUpdated = realTimeSync.on('ORDER_UPDATED', (payload) => {
+      const myId = user?.restaurantId;
+      const mySlug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
+      const hasIdMatch = myId && payload.restaurantId && String(payload.restaurantId).toLowerCase() === String(myId).toLowerCase();
+      const hasSlugMatch = mySlug && payload.restaurantSlug && String(payload.restaurantSlug).toLowerCase() === String(mySlug).toLowerCase();
+      if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
+
+      const updatedOrder = payload.order;
+      if (updatedOrder) {
+        setOrders(prev => {
+          const idx = prev.findIndex(o => o.id === updatedOrder.id);
+          if (idx !== -1) {
+            const cloned = [...prev];
+            cloned[idx] = updatedOrder;
+            return cloned;
+          }
+          return [updatedOrder, ...prev];
+        });
+      }
+      loadSales();
+    });
+
+    // Polling fallback every 30s
+    const pollInterval = setInterval(() => {
+      loadOrders();
+      loadSales();
+    }, 30000);
+
+    return () => {
+      realTimeSync.off('ORDER_CREATED', onCreated);
+      realTimeSync.off('ORDER_UPDATED', onUpdated);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   useEffect(() => {
@@ -1061,7 +1117,7 @@ export default function AdminView() {
                         {chartData.map((item, index) => {
                           const percentage = (item.amount / maxChartAmount) * 100;
                           return (
-                            <div key={index} className="flex-1 flex flex-col items-center group relative z-5">
+                            <div key={index} className="flex-1 h-full flex flex-col justify-end items-center group relative z-5">
                               {/* Tooltip Popup on Hover */}
                               <div className="absolute bottom-full mb-2 bg-black text-white text-[10px] font-black py-1.5 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
                                 <span className="block text-center font-mono">Rs {item.amount.toFixed(2)}</span>
