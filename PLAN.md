@@ -23,7 +23,7 @@ timeline
     v1.2.0 : Real-Time WebSocket Sync : Table Session Locking : Auto-Unlock on Settlement : Public Tracking Endpoint
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
-    v1.5.0 (Completed) : Waiter Module Integration : Centralized Staff Login Portal : Table Dropdown Selector : Instant Menu POS Loading : Auto-Release on Payment
+    v1.5.0 (Completed) : Waiter Module Integration : Centralized Staff Login Portal : Step-by-Step Table Dropdown Flow : Fraunces & Inter Typography Alignment : Auto-Release on Payment
 ```
 
 ---
@@ -93,10 +93,10 @@ flowchart TD
   - `waiter` → Waiter Table Dashboard & Tablet POS (`/waiter-pos`)
   - `admin` → Admin Dashboard (`/admin`)
 
-#### 3. Module 3 & 4: Table Dropdown & Session Management
-- Rebuilt [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx) with a top **Table Dropdown Selector** (`Table 1`, `Table 2`, `Table 3`...).
-- Menu opens immediately upon table selection with active table order indicators (`🔴 Active Order`, `🟠 Waiter Serving`).
-- Robust Auth Headers: Integrated `useAuth()` bearer tokens to eliminate token expiration errors.
+#### 3. Module 3 & 4: Step-by-Step Flow & SaaS Design Tokens
+- **Step 1 (First View on Screen)**: Prominent **Table Selection Dropdown** (`Table 1`, `Table 2`, `Table 3`...) with status tags (`🔴 Active Order`, `🟠 Waiter Serving`).
+- **Step 2 (After Selecting Table)**: Clicking "Open Menu for Table X" opens the dedicated Menu & Cart ordering page for that table.
+- **Typography & Aesthetics**: Aligned font families (`Fraunces` serif headings, `Inter` sans body) and color palette (`#171512`, `#7A2331` wine red accent, `#8A8580` muted text, `#EBE7E0` borders, `#F9F8F6` background) identically with `CustomerView.jsx`.
 
 #### 4. Module 5 & 10: QR Scan Behavior & Customer Tracking Lock
 - When a customer scans a QR code for a table occupied by a waiter session, backend returns `occupiedByWaiter: true`.
