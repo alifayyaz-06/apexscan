@@ -23,7 +23,7 @@ timeline
     v1.2.0 : Real-Time WebSocket Sync : Table Session Locking : Auto-Unlock on Settlement : Public Tracking Endpoint
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
-    v1.5.0 (Completed) : Waiter Module Integration : Centralized Staff Login Portal : Waiter Table Session Grid : Tablet POS Ordering : Auto-Release on Payment
+    v1.5.0 (Completed) : Waiter Module Integration : Centralized Staff Login Portal : Table Dropdown Selector : Instant Menu POS Loading : Auto-Release on Payment
 ```
 
 ---
@@ -82,7 +82,7 @@ flowchart TD
 ### Module Features Built
 
 #### 1. Module 1: Waiter Management (Admin Panel)
-- Added `waiter` role support in Admin Staff Credentials tab (`AdminView.jsx`).
+- Added `waiter` role support in Admin Staff Credentials tab (`AdminView.jsx`) & [staffController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/staffController.js).
 - Created "Launch Waiter POS" shortcut button in Admin Terminal Launchpad.
 
 #### 2. Module 2: Centralized Staff Authentication & Role Redirection
@@ -93,21 +93,21 @@ flowchart TD
   - `waiter` → Waiter Table Dashboard & Tablet POS (`/waiter-pos`)
   - `admin` → Admin Dashboard (`/admin`)
 
-#### 3. Module 3 & 4: Waiter Table Dashboard & Session Management
-- Created `WaiterSession.js` & `waiterSessionController.js`.
-- Displays color-coded table grid (Available, Waiter Session, Customer Ordering, Cooking, Ready, Billing).
-- "Start serving Table X?" modal locks table to `Occupied by Waiter`.
+#### 3. Module 3 & 4: Table Dropdown & Session Management
+- Rebuilt [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx) with a top **Table Dropdown Selector** (`Table 1`, `Table 2`, `Table 3`...).
+- Menu opens immediately upon table selection with active table order indicators (`🔴 Active Order`, `🟠 Waiter Serving`).
+- Robust Auth Headers: Integrated `useAuth()` bearer tokens to eliminate token expiration errors.
 
 #### 4. Module 5 & 10: QR Scan Behavior & Customer Tracking Lock
 - When a customer scans a QR code for a table occupied by a waiter session, backend returns `occupiedByWaiter: true`.
 - Customer menu is locked and displays *"Your waiter [Name] is taking your order"*, preventing duplicate customer orders.
 
 #### 5. Module 6 & 7: Waiter POS Tablet Interface & Order Pipeline
-- Built `WaiterPosView.jsx` with category sidebar, product grid, size variants, touch controls, special instructions, and order cart.
+- Built [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx) with category sidebar, product grid, size variants, touch controls, special instructions, and order cart.
 - Submits order through unified pipeline with `order_source: 'waiter'`.
 
 #### 6. Module 8, 9 & 11: Kitchen KDS, POS Integration & Auto-Settlement
-- Kitchen KDS (`KitchenOrderCard.jsx`) displays order source badges: `WAITER`, `SELLER`, `CUSTOMER QR`.
+- Kitchen KDS ([KitchenOrderCard.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/components/kitchen/KitchenOrderCard.jsx)) displays order source badges: `WAITER`, `SELLER`, `CUSTOMER QR`.
 - When Seller processes payment in POS, `completeAndPayOrder` automatically closes the waiter session, unlocks the table, and resets customer QR state.
 
 ---
@@ -121,7 +121,7 @@ flowchart TD
 - [orderController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/orderController.js): Order creation & auto-close waiter session upon payment.
 
 ### Frontend
-- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Waiter Table Dashboard & Tablet POS screen.
+- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Waiter Table Dropdown & Tablet POS screen.
 - [App.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/App.jsx): Centralized staff login routing for all staff roles.
 - [KitchenOrderCard.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/components/kitchen/KitchenOrderCard.jsx): KDS order source badges.
 - [AdminView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/AdminView.jsx): Admin dashboard & staff creation with `waiter` role.
