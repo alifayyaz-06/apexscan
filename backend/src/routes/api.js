@@ -39,7 +39,7 @@ router.post('/qr/regenerate', authenticate, authorize('admin'), tenantGuard, QRC
 
 // ─── Restaurant Settings Routes ───
 router.get('/restaurants/public/:slug', RestaurantController.getPublicDetails);
-router.get('/restaurants/settings', authenticate, authorize('admin'), tenantGuard, RestaurantController.getSettings);
+router.get('/restaurants/settings', authenticate, authorize('admin', 'sales_staff', 'waiter', 'kitchen_staff'), tenantGuard, RestaurantController.getSettings);
 router.put('/restaurants/settings', authenticate, authorize('admin'), tenantGuard, validate(updateSettingsSchema), RestaurantController.updateSettings);
 
 // ─── Auth Routes (Public) ───

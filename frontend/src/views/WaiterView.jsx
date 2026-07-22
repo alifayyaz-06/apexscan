@@ -75,9 +75,9 @@ export default function WaiterView() {
     const onCreated = realTimeSync.on('ORDER_CREATED', (payload) => {
       // Only process orders of this restaurant (match UUID or slug)
       const myId = user?.restaurantId;
-      const mySlug = user?.restaurantSlug;
-      const hasIdMatch = myId && payload.restaurantId && payload.restaurantId === myId;
-      const hasSlugMatch = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      const mySlug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
+      const hasIdMatch = myId && payload.restaurantId && String(payload.restaurantId).toLowerCase() === String(myId).toLowerCase();
+      const hasSlugMatch = mySlug && payload.restaurantSlug && String(payload.restaurantSlug).toLowerCase() === String(mySlug).toLowerCase();
       if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
 
       playAlertSound();
@@ -105,9 +105,9 @@ export default function WaiterView() {
 
     const onUpdated = realTimeSync.on('ORDER_UPDATED', (payload) => {
       const myId = user?.restaurantId;
-      const mySlug = user?.restaurantSlug;
-      const hasIdMatch = myId && payload.restaurantId && payload.restaurantId === myId;
-      const hasSlugMatch = mySlug && payload.restaurantSlug && payload.restaurantSlug === mySlug;
+      const mySlug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
+      const hasIdMatch = myId && payload.restaurantId && String(payload.restaurantId).toLowerCase() === String(myId).toLowerCase();
+      const hasSlugMatch = mySlug && payload.restaurantSlug && String(payload.restaurantSlug).toLowerCase() === String(mySlug).toLowerCase();
       if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
 
       const updatedOrder = payload.order;
