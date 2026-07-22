@@ -15,6 +15,12 @@ const SalesController = require('../controllers/salesController');
 const UploadController = require('../controllers/uploadController');
 const RestaurantController = require('../controllers/restaurantController');
 const QRController = require('../controllers/qrController');
+const WaiterSessionController = require('../controllers/waiterSessionController');
+
+// ─── Waiter Table Session Routes ───
+router.post('/waiter/sessions/start', authenticate, authorize('waiter', 'admin', 'sales_staff'), WaiterSessionController.startSession);
+router.get('/waiter/sessions/active', optionalAuthenticate, WaiterSessionController.getActiveSessions);
+router.post('/waiter/sessions/end', authenticate, authorize('waiter', 'admin', 'sales_staff'), WaiterSessionController.endSession);
 
 // Validation schemas
 const { adminLoginSchema, adminSignupSchema, staffLoginSchema, staffRefreshSchema, forgotPasswordSchema } = require('../validators/auth.schemas');

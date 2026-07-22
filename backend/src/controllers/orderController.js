@@ -104,13 +104,20 @@ class OrderController {
                o.status !== 'completed' && o.status !== 'cancelled';
       });
 
-      if (tableOrder) {
+      // Check active waiter session for this table
+      const WaiterSession = require('../models/WaiterSession');
+      const waiterSession = await WaiterSession.getActiveForTable(table, slug);
+
+      if (waiterSession || tableOrder) {
         return res.status(200).json({
           success: true,
           occupied: true,
-          activeOrderId: tableOrder.id,
-          orderNumber: tableOrder.order_number,
-          status: tableOrder.status
+          occupiedByWaiter: !!waiterSession,
+          waiterName: waiterSession ? waiterSession.waiter_name : null,
+          waiterId: waiterSession ? waiterSession.waiter_id : null,
+          activeOrderId: tableOrder ? tableOrder.id : null,
+          orderNumber: tableOrder ? tableOrder.order_number : null,
+          status: tableOrder ? tableOrder.status : 'waiter_serving'
         });
       }
 
@@ -261,10 +268,13 @@ class OrderController {
         return res.status(404).json({ success: false, message: 'Order not found.' });
       }
 
-      // Regenerate table code so old QR codes are invalidated for the table once bill is paid
+      // Regenerate table code & end active waiter session once bill is paid
       const tblNum = (updatedOrder.table_name || updatedOrder.table || '').toString().replace(/[^0-9]/g, '');
       if (tblNum) {
-        TableCodeManager.regenerateCode(req.restaurantSlug || 'default', tblNum);
+        const slug = req.restaurantSlug || 'default';
+        TableCodeManager.regenerateCode(slug, tblNum);
+        const WaiterSession = require('../models/WaiterSession');
+        await WaiterSession.endForTable(tblNum, slug);
       }
 
       // Trigger WebSocket broadcast

@@ -29,11 +29,24 @@ export default function KitchenOrderCard({
         {/* Card Top Row */}
         <div className="flex justify-between items-start pb-3.5 border-b border-zinc-100">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-black uppercase tracking-wider bg-zinc-900 text-white px-2.5 py-0.5 rounded-full">
                 Table {order.tableNumber || order.table || "1"}
               </span>
-              <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-500 font-mono">
+              {order.order_source === 'waiter' ? (
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-full shadow-xs">
+                  WAITER ({order.billing?.waiterName || 'Staff'})
+                </span>
+              ) : order.order_source === 'seller' ? (
+                <span className="text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white px-2.5 py-0.5 rounded-full">
+                  SELLER POS
+                </span>
+              ) : (
+                <span className="text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                  CUSTOMER QR
+                </span>
+              )}
+              <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-500 font-mono ml-auto">
                 <Clock className="w-3 h-3 text-zinc-400" />
                 <span>{elapsedTime}</span>
               </div>

@@ -5,6 +5,7 @@ import { supabase } from './utils/supabaseClient';
 import LandingView from './views/LandingView';
 import CustomerView from './views/CustomerView';
 import WaiterView from './views/WaiterView';
+import WaiterPosView from './views/WaiterPosView';
 import KitchenView from './views/KitchenView';
 import AdminView from './views/AdminView';
 import LoginView from './views/LoginView';
@@ -70,6 +71,8 @@ function AppContent() {
         redirectTarget = `/r/${user.restaurantSlug}/kitchen`;
       } else if (user.role === 'sales_staff' && user.restaurantSlug) {
         redirectTarget = `/r/${user.restaurantSlug}/waiter`;
+      } else if (user.role === 'waiter' && user.restaurantSlug) {
+        redirectTarget = `/r/${user.restaurantSlug}/waiter-pos`;
       } else if (user.role === 'super_admin') {
         redirectTarget = '/super';
       }
@@ -123,7 +126,7 @@ function AppContent() {
   // ─── Route Guards (All management paths require login) ───
 
   // If path is a protected dashboard and user is not authenticated, redirect
-  const isProtectedPath = ['/admin', '/waiter', '/kitchen', '/super'].includes(subpath);
+  const isProtectedPath = ['/admin', '/waiter', '/waiter-pos', '/kitchen', '/super'].includes(subpath);
   if (isProtectedPath && !user) {
     if (subpath === '/super') {
       window.history.replaceState(null, '', '/owner');
@@ -175,14 +178,24 @@ function AppContent() {
     return <KitchenView />;
   }
 
-  // 6. Sales / Waiter Terminal
-  if (subpath === '/waiter') {
+  // 6. Sales / POS Terminal
+  if (subpath === '/waiter' || subpath === '/pos') {
     if (user.role !== 'sales_staff' && user.role !== 'admin') {
       const targetLogin = restaurantSlug ? `/r/${restaurantSlug}/login` : '/login';
       window.history.replaceState(null, '', targetLogin);
       return <LoginView />;
     }
     return <WaiterView />;
+  }
+
+  // 6b. Waiter Table Dashboard & Tablet POS Terminal (New)
+  if (subpath === '/waiter-pos') {
+    if (user.role !== 'waiter' && user.role !== 'admin' && user.role !== 'sales_staff') {
+      const targetLogin = restaurantSlug ? `/r/${restaurantSlug}/login` : '/login';
+      window.history.replaceState(null, '', targetLogin);
+      return <LoginView />;
+    }
+    return <WaiterPosView />;
   }
 
   // 7. Super Admin Portal

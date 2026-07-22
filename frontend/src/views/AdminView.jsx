@@ -929,7 +929,7 @@ export default function AdminView() {
                       <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider">
                         <th className="text-left px-5 py-3.5 font-bold">Order ID</th>
                         <th className="text-left px-5 py-3.5 font-bold">Order Type</th>
-                        <th className="text-left px-5 py-3.5 font-bold">Items</th>
+
                         <th className="text-left px-5 py-3.5 font-bold">Status</th>
                         <th className="text-right px-5 py-3.5 font-bold">Total</th>
                         <th className="text-right px-5 py-3.5 font-bold">Payment</th>
@@ -958,9 +958,7 @@ export default function AdminView() {
                                 {typeLabel}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5 text-slate-500 text-xs max-w-[200px]">
-                              {order.items.map(i => `${i.name} ×${i.quantity}`).join(', ')}
-                            </td>
+
                             <td className="px-5 py-3.5">
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_COLORS[order.status] || 'bg-slate-100 text-slate-500'}`}>
                                 {order.status}
@@ -1227,7 +1225,7 @@ export default function AdminView() {
                   <strong> Note:</strong> This will sign you out of the Admin panel so you can enter the credentials generated below.
                 </p>
               </div>
-              <div className="flex gap-3 shrink-0">
+              <div className="flex flex-wrap gap-3 shrink-0">
                 <button
                   onClick={() => handleLaunchTerminal('kitchen')}
                   className="px-4 py-2 bg-[#2B2D42] hover:bg-[#2B2D42]/90 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
@@ -1239,6 +1237,12 @@ export default function AdminView() {
                   className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-[#2B2D42] font-bold text-xs rounded-xl transition-all shadow-sm"
                 >
                   Launch Sales Screen
+                </button>
+                <button
+                  onClick={() => handleLaunchTerminal('waiter')}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-sm shadow-amber-500/20"
+                >
+                  Launch Waiter POS
                 </button>
               </div>
             </div>
@@ -1732,6 +1736,7 @@ export default function AdminView() {
                   >
                     <option value="kitchen_staff">🍳 Kitchen Display (KDS)</option>
                     <option value="sales_staff">💵 Sales Terminal</option>
+                    <option value="waiter">🕺 Waiter POS & Floor Dashboard</option>
                     <option value="rider">🚴 Delivery Rider</option>
                   </select>
                 </div>

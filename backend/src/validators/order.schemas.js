@@ -16,6 +16,9 @@ const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1, 'At least one item is required').max(100),
   restaurant_id: z.string().max(100).optional(),
   restaurantSlug: z.string().max(100).optional(),
+  order_source: z.enum(['qr', 'waiter', 'seller', 'takeaway', 'delivery']).optional().default('qr'),
+  waiter_id: z.string().optional(),
+  session_id: z.string().optional(),
   total_amount: z.number().optional(),
   billing: z.any().optional()
 }).passthrough();
