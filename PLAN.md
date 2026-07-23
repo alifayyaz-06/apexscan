@@ -24,6 +24,7 @@ timeline
     v1.3.0 : 5-Step Order Stepper Tracker : Strict Post-Order Lock Screen : Navigation & Refresh Guard : Paid Thank-You Overlay
     v1.4.0 : Uniform Order ID Standard : Order Type Badges : Admin Order History Refinements : Vite Proxy & Schema Enhancements
     v1.5.0 (Completed) : Waiter Module Integration : Mobile/Tablet Touch Responsive : Real-time Seller POS Order Queue : Robust Multi-Layer Auth : Auto-Release on Payment
+    v1.6.0 (Completed) : Operational & Cash Drawer Controls : Unassigned Waiter Calls : Real-Time Alert Sync : End-of-Shift Cash Summary : Rider Bulk Settlement : Seller Screen Renaming
 ```
 
 ---
@@ -55,6 +56,26 @@ flowchart LR
 | `403 Forbidden` on `/restaurants/settings` | Route only allowed `admin` role | Added `sales_staff`, `waiter`, `kitchen_staff` | `f44aa94` |
 | `tenantGuard` 403 on staff requests | Missing `req.restaurantId`/`req.restaurantSlug` caused hard 403 | Added fallback auto-population from `req.user` | `0311770` |
 | **Orders not appearing on Seller screen** | `restaurantParam` in `createOrder` never fell back to `req.body.restaurantSlug`, causing wrong tenant storage AND skipping WebSocket broadcast entirely | Added `|| reqSlug` fallback to `restaurantParam` resolution chain | `955ee36` |
+
+---
+
+## 📋 Implementation Summary — Operational & Cash Drawer Controls (v1.6.0)
+
+### Key Enhancements & Bug Fixes in v1.6.0
+
+| Feature / Bug Fix | Root Cause / Need | Solution |
+|---|---|---|
+| **Unassigned Waiter Calls** | Blocked customer calls when no waiter was checked in | Set waiterId to `'unassigned'` and broadcasted to all active waiters |
+| **Real-time Alert Cancellation** | Delay in clearing alert alarms on other terminals | Handled `WAITER_ACKNOWLEDGED`/`WAITER_DISMISSED` WebSocket events to instantly silence alerts |
+| **End-of-Shift Cash Summary** | Cashiers couldn't balance their cash drawer | Added "Cash Summary" showing Cash vs Card monetary totals |
+| **Rider Bulk Settlement** | Settling multiple deliveries for a rider was tedious | Added "Settle All" button to settle all assigned orders at once |
+| **Delivery Rider Cash Enforcement** | Riders only handle Cash | Enforced Cash payment selection for delivery/rider orders |
+| **Rider Double-Booking Warning** | Prevent duplicate rider assignments | Listed active delivery counts in dropdown with a Double Booking alert |
+| **Vibration Alert Loop** | Hard to get waiter's attention on busy floors | Integrated a continuous device vibration pattern on customer calls |
+| **Emoji Clean-up** | Emojis looked unprofessional on operational views | Replaced all emojis with Lucide vector icons and clean typography |
+| **Seller Screen Renaming** | Code naming confusion (WaiterView vs WaiterPosView) | Renamed `WaiterView.jsx` to `SellerView.jsx` |
+| **Admin Launch Buttons Clean-up** | Clean up unused admin terminal launchers | Removed Launchpad page cards while preserving a single button in sidebar |
+| **Autoplay Audio Context Fix** | Browsers block automatic alarm sound play | Attached a one-time gesture-activation resume hook to window |
 
 ### Architecture Overview
 
@@ -105,6 +126,6 @@ flowchart TD
 
 ### Frontend
 - [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Mobile/tablet touch-responsive Waiter POS with table dropdown, floating basket, cart modal.
-- [WaiterView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterView.jsx): Seller POS with 8s polling + WebSocket real-time sync.
+- [SellerView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/SellerView.jsx): Seller POS with 8s polling + WebSocket real-time sync.
 - [LoginView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/LoginView.jsx): Centralized staff login with role-based redirection.
 - [App.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/App.jsx): Route guards and authenticated role redirection.
