@@ -985,7 +985,7 @@ export default function WaiterView() {
           </div>
         )}
         {/* POS Header */}
-        <header className="bg-white border-b border-zinc-200 px-6 py-4 flex justify-between items-center shrink-0">
+        <header className="bg-white border-b border-zinc-200 px-4 md:px-6 py-4 flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center shrink-0">
           <div className="flex items-center gap-4">
             <button 
               type="button"
@@ -1006,10 +1006,10 @@ export default function WaiterView() {
         </header>
 
         {/* POS Body Layout */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
           
           {/* LEFT SIDE - MENU */}
-          <div className={`${cart.length > 0 ? 'w-[60%] border-r border-zinc-200' : 'w-full'} flex flex-col p-6 overflow-hidden transition-all duration-300`}>
+          <div className={`${cart.length > 0 ? 'w-full lg:w-[60%] border-b lg:border-b-0 lg:border-r border-zinc-200' : 'w-full'} flex flex-col p-4 md:p-6 overflow-hidden transition-all duration-300`}>
             {/* Search and Filters */}
             <div className="flex flex-col gap-4 mb-6 shrink-0">
               <div className="relative">
@@ -1088,7 +1088,7 @@ export default function WaiterView() {
 
           {/* RIGHT SIDE - ORDER CART (40% width) */}
           {cart.length > 0 && (
-            <form onSubmit={handleManualCheckout} className="w-[40%] flex flex-col bg-white overflow-hidden animate-fade-in border-l border-zinc-200">
+            <form onSubmit={handleManualCheckout} className="w-full lg:w-[40%] flex flex-col bg-white overflow-hidden animate-fade-in border-t lg:border-t-0 lg:border-l border-zinc-200">
               {/* Order Title */}
               <div className="px-6 py-4 border-b border-zinc-200 shrink-0 flex justify-between items-center bg-zinc-50/50">
                 <span className="font-black text-sm uppercase text-zinc-700 tracking-wider">Current Cart</span>

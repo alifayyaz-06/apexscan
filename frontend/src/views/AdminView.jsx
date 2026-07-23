@@ -30,6 +30,12 @@ export default function AdminView() {
   const { user, logout, authHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashboardChartTab, setDashboardChartTab] = useState('today');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    setIsSidebarOpen(false);
+  };
 
   const handleLaunchTerminal = async (terminalType) => {
     const targetSlug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
@@ -819,12 +825,16 @@ export default function AdminView() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F9F9F9] text-[#2B2D42] flex">
+    <div className="min-h-screen bg-[#F9F9F9] text-[#2B2D42] flex relative">
+      {/* Backdrop overlay for mobile */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)}></div>
+      )}
 
       {/* ── Left Sidebar ── */}
-      <aside className="w-64 min-h-screen bg-white border-r border-slate-200 flex flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
+      <aside className={`w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 fixed inset-y-0 left-0 h-screen overflow-y-auto z-50 transform transition-transform duration-300 lg:sticky lg:top-0 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
-        <div className="px-5 py-5 border-b border-slate-100">
+        <div className="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {user?.restaurantLogo ? (
               <img src={user.restaurantLogo} className="h-9 w-9 object-contain rounded-xl border border-slate-100 p-0.5 bg-white" alt={user.restaurantName} />
@@ -840,6 +850,12 @@ export default function AdminView() {
               <span className="text-[10px] font-medium text-slate-400 truncate block">{user?.email}</span>
             </div>
           </div>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-1.5 text-slate-400 hover:text-black rounded-lg hover:bg-slate-50"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -847,7 +863,7 @@ export default function AdminView() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
               className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                 activeTab === tab.key
                   ? 'bg-[#E63946]/10 text-[#E63946]'
@@ -879,20 +895,30 @@ export default function AdminView() {
       </aside>
 
       {/* ── Right Content Area ── */}
-      <div className="flex-1 min-h-screen overflow-y-auto">
+      <div className="flex-1 min-h-screen overflow-y-auto w-full lg:w-auto">
         {/* Top Bar */}
-        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <h2 className="text-lg font-bold text-[#2B2D42]">{tabs.find(t => t.key === activeTab)?.label}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {activeTab === 'dashboard' && "Restaurant's real-time performance dashboard"}
-              {activeTab === 'menu' && `${menuItems.length} items across ${catsToDisplay.length} categories`}
-              {activeTab === 'orders' && `${filteredOrders.length} orders`}
-              {activeTab === 'sales' && 'Revenue & analytics overview'}
-              {activeTab === 'qr' && `${tableCount} table QR codes`}
-              {activeTab === 'staff' && `${staffList.length} staff logins`}
-              {activeTab === 'settings' && 'Restaurant configuration'}
-            </p>
+        <header className="bg-white border-b border-slate-200 px-4 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 bg-slate-50 rounded-xl border border-slate-200"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-[#2B2D42]">{tabs.find(t => t.key === activeTab)?.label}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {activeTab === 'dashboard' && "Restaurant's real-time performance dashboard"}
+                {activeTab === 'menu' && `${menuItems.length} items across ${catsToDisplay.length} categories`}
+                {activeTab === 'orders' && `${filteredOrders.length} orders`}
+                {activeTab === 'sales' && 'Revenue & analytics overview'}
+                {activeTab === 'qr' && `${tableCount} table QR codes`}
+                {activeTab === 'staff' && `${staffList.length} staff logins`}
+                {activeTab === 'settings' && 'Restaurant configuration'}
+              </p>
+            </div>
           </div>
           <span className="text-[10px] font-black uppercase tracking-wider bg-slate-50 border border-slate-200 px-3 py-1 rounded-full text-slate-500">
             Admin Panel
@@ -900,7 +926,7 @@ export default function AdminView() {
         </header>
 
         {/* ── Tab Content ── */}
-        <main className="max-w-7xl mx-auto px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {/* TAB 1: MENU EDITOR                              */}
