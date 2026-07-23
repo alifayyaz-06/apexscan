@@ -888,13 +888,6 @@ export default function AdminView() {
         {/* Sidebar Bottom */}
         <div className="px-4 pb-5 mt-auto border-t border-slate-100 pt-4 flex flex-col gap-3">
           <button
-            onClick={() => handleLaunchTerminal('staff')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-colors border border-indigo-100"
-          >
-            <Key size={14} />
-            Launch Terminal
-          </button>
-          <button
             onClick={logout}
             className="w-full text-xs text-red-400 hover:text-red-600 font-bold transition-colors py-1.5"
           >
@@ -1676,36 +1669,6 @@ export default function AdminView() {
               </button>
             </div>
 
-            {/* Terminal Launchpad Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div>
-                <h3 className="text-base font-bold text-[#2B2D42] mb-1">Terminal Launchpad</h3>
-                <p className="text-slate-500 text-xs max-w-xl leading-relaxed">
-                  Ready to open a staff terminal? Click below to launch the Kitchen KDS or Sales screen. 
-                  <strong> Note:</strong> This will sign you out of the Admin panel so you can enter the credentials generated below.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 shrink-0">
-                <button
-                  onClick={() => handleLaunchTerminal('kitchen')}
-                  className="px-4 py-2 bg-[#2B2D42] hover:bg-[#2B2D42]/90 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
-                >
-                  Launch Kitchen Screen
-                </button>
-                <button
-                  onClick={() => handleLaunchTerminal('sales')}
-                  className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-[#2B2D42] font-bold text-xs rounded-xl transition-all shadow-sm"
-                >
-                  Launch Sales Screen
-                </button>
-                <button
-                  onClick={() => handleLaunchTerminal('waiter')}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-sm shadow-amber-500/20"
-                >
-                  Launch Waiter POS
-                </button>
-              </div>
-            </div>
 
             {staffLoading ? (
               <div className="text-center py-20 text-slate-500">Loading staff credentials…</div>
