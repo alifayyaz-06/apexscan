@@ -61,6 +61,7 @@ export default function WaiterView() {
   const audioUnlocked = React.useRef(false);
 
   useEffect(() => {
+    if (!user) return;
     if (user?.restaurantSlug) {
       realTimeSync.registerRestaurant(user.restaurantSlug, user.role);
     } else if (user?.restaurantId) {
@@ -111,22 +112,21 @@ export default function WaiterView() {
       if ((myId || mySlug) && !hasIdMatch && !hasSlugMatch) return;
 
       const updatedOrder = payload.order;
-      
-      // If completed or cancelled, remove from live queue
-      if (updatedOrder.status === 'completed' || updatedOrder.status === 'cancelled') {
-        setLiveOrders(prev => prev.filter(o => o.id !== updatedOrder.id));
-      } else {
-        setLiveOrders(prev => {
-          const idx = prev.findIndex(o => o.id === updatedOrder.id);
-          if (idx !== -1) {
-            const cloned = [...prev];
-            cloned[idx] = updatedOrder;
-            return cloned;
-          } else {
-            return [updatedOrder, ...prev];
-          }
-        });
-      }
+      setLiveOrders(prev => {
+        // If order completed or cancelled, remove from KDS
+        if (updatedOrder.status === 'completed' || updatedOrder.status === 'cancelled') {
+          return prev.filter(o => o.id !== updatedOrder.id);
+        }
+        
+        const idx = prev.findIndex(o => o.id === updatedOrder.id);
+        if (idx !== -1) {
+          const cloned = [...prev];
+          cloned[idx] = updatedOrder;
+          return cloned;
+        } else {
+          return [updatedOrder, ...prev];
+        }
+      });
     });
 
     // Periodic polling as safety net (every 8 seconds)
@@ -139,7 +139,7 @@ export default function WaiterView() {
       realTimeSync.off('ORDER_UPDATED', onUpdated);
       clearInterval(pollInterval);
     };
-  }, []);
+  }, [user]);
 
   const loadLiveOrders = async () => {
     try {
