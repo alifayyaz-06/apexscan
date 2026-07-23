@@ -398,12 +398,12 @@ class AuthController {
       console.log(`[forgotPassword] DB result:`, { restaurant, dbErr: dbErr?.message });
 
       // Super admins and active restaurants are allowed to reset passwords.
-      // If the email doesn't exist or is inactive, we return a generic success message for security, without sending mail.
+      // If the email doesn't exist or is inactive, we return a 403 error so the UI handles it correctly.
       if (dbErr || (!restaurant && !isSuperAdmin) || (restaurant && !restaurant.is_active)) {
         console.log(`[forgotPassword] Blocked: dbErr=${!!dbErr}, noRestaurant=${!restaurant}, inactive=${restaurant && !restaurant.is_active}`);
-        return res.status(200).json({
-          success: true,
-          message: 'If this email is registered, a password reset code has been sent.'
+        return res.status(403).json({
+          success: false,
+          message: 'This email is not registered or authorized.'
         });
       }
 
