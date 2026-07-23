@@ -15,14 +15,7 @@ class WaiterCallController {
 
       // 1. Resolve if table has an active waiter session
       const session = await WaiterSession.getActiveForTable(table, restaurantSlug);
-      if (!session) {
-        return res.status(400).json({
-          success: false,
-          message: 'No waiter is currently assigned to your table. Please try again in a moment.'
-        });
-      }
-
-      const waiterId = session.waiter_id;
+      const waiterId = session ? session.waiter_id : 'unassigned';
 
       // 2. Create the call request
       const call = await WaiterCall.create({
@@ -31,13 +24,13 @@ class WaiterCallController {
         restaurantSlug
       });
 
-      // 3. Broadcast real-time call event to the targeted waiter
+      // 3. Broadcast real-time call event to the targeted waiter (or all if unassigned)
       const broadcast = req.app.get('wssBroadcast');
       if (broadcast) {
         broadcast({
           type: 'CALL_WAITER',
           restaurantSlug,
-          targetWaiterId: waiterId,
+          targetWaiterId: waiterId === 'unassigned' ? null : waiterId,
           call: {
             id: call.id,
             table: String(table),

@@ -56,8 +56,17 @@ class WaiterCall {
     const fallbackList = waiterCallsFallback.get(fallbackKey) || [];
     const activeFallback = fallbackList.filter(c => c.status === 'waiting' || c.status === 'accepted');
 
+    // Also include in-memory unassigned calls
+    const unassignedKey = `${slug}:unassigned`;
+    const unassignedList = waiterCallsFallback.get(unassignedKey) || [];
+    const activeUnassigned = unassignedList.filter(c => c.status === 'waiting' || c.status === 'accepted');
+    
+    // Combine fallback lists
+    let combinedFallback = [...activeFallback, ...activeUnassigned];
+
     try {
-      const { data, error } = await defaultClient.rpc('query_tenant', {
+      // 1. Fetch calls assigned directly to this waiter
+      const { data: assignedData, error: assignedError } = await defaultClient.rpc('query_tenant', {
         tenant_slug: slug,
         table_name: 'waiter_calls',
         operation: 'SELECT_BY_FILTER',
@@ -65,17 +74,45 @@ class WaiterCall {
         filter_value: waiterId
       });
 
-      if (!error && Array.isArray(data)) {
-        // Return only waiting/accepted sorted by creation date (FIFO queue)
-        return data
-          .filter(c => c.status === 'waiting' || c.status === 'accepted')
+      // 2. Fetch unassigned calls
+      const { data: unassignedData, error: unassignedError } = await defaultClient.rpc('query_tenant', {
+        tenant_slug: slug,
+        table_name: 'waiter_calls',
+        operation: 'SELECT_BY_FILTER',
+        filter_column: 'waiter_id',
+        filter_value: 'unassigned'
+      });
+
+      let combinedData = [];
+      if (!assignedError && Array.isArray(assignedData)) {
+        combinedData = [...combinedData, ...assignedData];
+      }
+      if (!unassignedError && Array.isArray(unassignedData)) {
+        combinedData = [...combinedData, ...unassignedData];
+      }
+
+      if (combinedData.length > 0 || (!assignedError && !unassignedError)) {
+        const seenIds = new Set();
+        return combinedData
+          .filter(c => {
+            if (seenIds.has(c.id)) return false;
+            seenIds.add(c.id);
+            return c.status === 'waiting' || c.status === 'accepted';
+          })
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       }
     } catch (e) {
       console.warn('[WaiterCall.getActiveForWaiter] Database read warning, using memory fallback:', e.message);
     }
 
-    return activeFallback.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const seenFallbackIds = new Set();
+    return combinedFallback
+      .filter(c => {
+        if (seenFallbackIds.has(c.id)) return false;
+        seenFallbackIds.add(c.id);
+        return true;
+      })
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
 
   /**

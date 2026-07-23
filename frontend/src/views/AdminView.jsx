@@ -1741,10 +1741,12 @@ export default function AdminView() {
                                   : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                               }`}>
                                 {staff.role === 'kitchen_staff' 
-                                  ? '🍳 Kitchen (KDS)' 
+                                  ? 'Kitchen (KDS)' 
                                   : staff.role === 'rider' 
-                                  ? '🚴 Delivery Rider' 
-                                  : '💵 Sales Terminal'}
+                                  ? 'Delivery Rider' 
+                                  : staff.role === 'waiter'
+                                  ? 'Waiter POS'
+                                  : 'Sales Terminal'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -2194,10 +2196,10 @@ export default function AdminView() {
                     onChange={e => setStaffForm(prev => ({ ...prev, role: e.target.value }))}
                     className="w-full py-2.5 px-4 bg-white border border-slate-200 rounded-xl text-[#2B2D42] text-sm focus:border-[#E63946] outline-none appearance-none"
                   >
-                    <option value="kitchen_staff">🍳 Kitchen Display (KDS)</option>
-                    <option value="sales_staff">💵 Sales Terminal</option>
-                    <option value="waiter">🕺 Waiter POS & Floor Dashboard</option>
-                    <option value="rider">🚴 Delivery Rider</option>
+                    <option value="kitchen_staff">Kitchen Display (KDS)</option>
+                    <option value="sales_staff">Sales Terminal</option>
+                    <option value="waiter">Waiter POS & Floor Dashboard</option>
+                    <option value="rider">Delivery Rider</option>
                   </select>
                 </div>
               )}
