@@ -762,6 +762,52 @@ export default function SellerView() {
     setIsBillingModalOpen(true);
   };
 
+  const handleOpenRiderBulkSettle = (riderName, orders) => {
+    if (!orders || orders.length === 0) return;
+    
+    const subtotal = orders.reduce((sum, o) => sum + (o.billing?.subtotal || 0), 0);
+    const tax = orders.reduce((sum, o) => sum + (o.billing?.tax || 0), 0);
+    const serviceCharge = orders.reduce((sum, o) => sum + (o.billing?.serviceCharge || 0), 0);
+    const discount = orders.reduce((sum, o) => sum + (o.billing?.discount || 0), 0);
+    const total = orders.reduce((sum, o) => sum + (o.billing?.total || 0), 0);
+    
+    const items = [];
+    orders.forEach(o => {
+      o.items?.forEach(item => {
+        items.push({
+          ...item,
+          name: `${item.name} (${o.order_number || o.id.slice(0, 4)})`
+        });
+      });
+    });
+    
+    const virtualOrder = {
+      id: `bulk-rider-${riderName}`,
+      isBulkRiderSettle: true,
+      riderName: riderName,
+      orderIds: orders.map(o => o.id),
+      order_type: 'delivery',
+      table_name: 'Delivery',
+      table: 'Delivery',
+      items: items,
+      timestamp: new Date().toISOString(),
+      billing: {
+        subtotal,
+        tax,
+        serviceCharge,
+        discount,
+        total,
+        paymentMethod: 'cash',
+        rider: orders[0].billing?.rider
+      }
+    };
+    
+    setBillingOrder(virtualOrder);
+    setBillingPaymentMethod('cash');
+    setIsHistoryViewOnly(false);
+    setIsBillingModalOpen(true);
+  };
+
   const handleSettlePayment = async () => {
     if (!billingOrder) return;
     if (!billingPaymentMethod) {
@@ -770,18 +816,43 @@ export default function SellerView() {
     }
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/orders/${billingOrder.id}/pay`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...authHeaders()
-        },
-        body: JSON.stringify({ paymentMethod: billingPaymentMethod })
-      });
-      const result = await res.json();
-      if (result.success) {
-        setIsBillingModalOpen(false);
-        loadLiveOrders();
+      if (billingOrder.isBulkRiderSettle) {
+        let allSuccess = true;
+        for (const orderId of billingOrder.orderIds) {
+          const res = await fetch(`${BACKEND_URL}/api/v1/orders/${orderId}/pay`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              ...authHeaders()
+            },
+            body: JSON.stringify({ paymentMethod: billingPaymentMethod })
+          });
+          const result = await res.json();
+          if (!result.success) {
+            allSuccess = false;
+          }
+        }
+        if (allSuccess) {
+          toast.success(`Successfully settled all deliveries for ${billingOrder.riderName}!`);
+          setIsBillingModalOpen(false);
+          loadLiveOrders();
+        } else {
+          toast.error("Some orders failed to settle. Please verify.");
+        }
+      } else {
+        const res = await fetch(`${BACKEND_URL}/api/v1/orders/${billingOrder.id}/pay`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...authHeaders()
+          },
+          body: JSON.stringify({ paymentMethod: billingPaymentMethod })
+        });
+        const result = await res.json();
+        if (result.success) {
+          setIsBillingModalOpen(false);
+          loadLiveOrders();
+        }
       }
     } catch (err) {
       console.error(err);
@@ -1929,9 +2000,17 @@ export default function SellerView() {
                               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Rider Name</span>
                               <span className="text-sm font-extrabold text-black mt-0.5 block">{riderName}</span>
                             </div>
-                            <div className="text-right">
-                              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Total Outstanding</span>
-                              <span className="text-sm font-black text-amber-700 block">Rs {balance.toFixed(2)}</span>
+                            <div className="text-right flex flex-col items-end gap-1.5">
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Total Outstanding</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-black text-amber-700 block">Rs {balance.toFixed(2)}</span>
+                                <button
+                                  onClick={() => handleOpenRiderBulkSettle(riderName, riderOrders)}
+                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded-lg shadow-sm transition-colors cursor-pointer"
+                                >
+                                  Settle All
+                                </button>
+                              </div>
                             </div>
                           </div>
 
@@ -2205,7 +2284,9 @@ export default function SellerView() {
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-5 print:p-0 print:bg-white print:text-black">
             <div className="bg-white border border-zinc-200 w-full max-w-[480px] p-6 rounded-2xl shadow-xl max-h-[95vh] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:shadow-none print:p-0 print:bg-white print:max-w-full">
               <div className="flex justify-between items-center border-b border-zinc-100 pb-4 mb-5 print:hidden">
-                <h2 className="text-base font-bold text-black font-mono">{formatOrderId(billingOrder)}</h2>
+                <h2 className="text-base font-bold text-black font-mono">
+                  {billingOrder.isBulkRiderSettle ? `BULK SETTLE: ${billingOrder.riderName.toUpperCase()}` : formatOrderId(billingOrder)}
+                </h2>
                 <button onClick={() => setIsBillingModalOpen(false)} className="text-2xl text-zinc-400 hover:text-black transition-colors">✕</button>
               </div>
 
@@ -2228,7 +2309,9 @@ export default function SellerView() {
 
                 <div className="grid grid-cols-[85px_1fr] gap-x-2 gap-y-1 text-xs my-1">
                   <span className="text-zinc-500">Receipt #:</span>
-                  <span className="font-bold text-black font-mono">{formatOrderId(billingOrder)}</span>
+                  <span className="font-bold text-black font-mono">
+                    {billingOrder.isBulkRiderSettle ? `BULK-${billingOrder.riderName.toUpperCase()}` : formatOrderId(billingOrder)}
+                  </span>
                   <span className="text-zinc-500">Date     :</span>
                   <span className="font-semibold text-black">{formatReceiptDate(billingOrder.timestamp || billingOrder.created_at)}</span>
                   {['takeaway', 'delivery'].includes(billingOrder.order_type) || ['Take Away', 'Delivery'].includes(billingOrder.table_name || billingOrder.table) ? (
