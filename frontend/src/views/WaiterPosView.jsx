@@ -128,6 +128,7 @@ export default function WaiterPosView() {
 
   // Data State
   const [tableCount, setTableCount] = useState(12);
+  const [logoUrl, setLogoUrl] = useState(user?.restaurantLogo || '');
   const [activeSessions, setActiveSessions] = useState([]);
   const [tableOrdersMap, setTableOrdersMap] = useState({});
 
@@ -226,7 +227,10 @@ export default function WaiterPosView() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/restaurants/public/${slug}`);
       const data = await res.json();
-      if (data.success && data.data && data.data.table_count) setTableCount(data.data.table_count);
+      if (data.success && data.data) {
+        if (data.data.table_count) setTableCount(data.data.table_count);
+        if (data.data.logo) setLogoUrl(data.data.logo);
+      }
     } catch (e) {}
   };
 
@@ -438,47 +442,22 @@ export default function WaiterPosView() {
   const renderAssistancePopup = () => {
     if (!unacknowledgedCall) return null;
     return (
-      <div className="fixed inset-0 bg-[#7A2331]/40 backdrop-blur-md z-[999] flex items-center justify-center p-6">
-        <div className="bg-white border border-[#EBE7E0] max-w-md w-full p-8 rounded-3xl shadow-2xl relative text-center space-y-6">
-          <div className="w-20 h-20 rounded-full bg-rose-50 text-[#7A2331] border border-rose-200 mx-auto flex items-center justify-center animate-bounce">
+      <div className="fixed inset-0 bg-[#7A2331]/40 backdrop-blur-xs z-[999] flex items-center justify-center p-6">
+        <div className="bg-white border border-[#EBE7E0] max-w-sm w-full p-8 rounded-3xl shadow-2xl relative text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-rose-50 text-[#7A2331] border border-rose-200 mx-auto flex items-center justify-center">
             <Bell size={32} />
           </div>
 
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#7A2331]">
-              Customer Needs Assistance
-            </span>
-            <h1 className="text-3xl font-bold text-[#171512] mt-1" style={SERIF}>
+            <h1 className="text-3xl font-bold text-[#171512]" style={SERIF}>
               {unacknowledgedCall.tableName}
             </h1>
-            <p className="text-xs text-[#8A8580] mt-1.5 leading-relaxed">
-              A customer at this table is calling for assistance. Please respond immediately.
-            </p>
           </div>
 
-          <div className="bg-[#F9F8F6] border border-[#EBE7E0] rounded-2xl p-4 text-left space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-[#8A8580]">Restaurant Name:</span>
-              <span className="font-bold text-[#171512] capitalize">{unacknowledgedCall.restaurantName}</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-[#8A8580]">Request Time:</span>
-              <span className="font-bold text-[#171512]">
-                {new Date(unacknowledgedCall.requestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleDismissCall(unacknowledgedCall.id)}
-              className="flex-1 py-3.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-extrabold text-xs rounded-2xl transition-all cursor-pointer border border-[#EBE7E0]"
-            >
-              Dismiss
-            </button>
+          <div>
             <button
               onClick={() => handleAcknowledgeCall(unacknowledgedCall.id)}
-              className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all cursor-pointer"
+              className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-2xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all cursor-pointer text-center block"
             >
               Acknowledge
             </button>
@@ -495,9 +474,17 @@ export default function WaiterPosView() {
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <header className="bg-white border-b border-[#EBE7E0] px-4 py-3.5 sticky top-0 z-30 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#171512] flex items-center justify-center text-white font-bold">
-            <UtensilsCrossed size={18} />
-          </div>
+          {(logoUrl || user?.restaurantLogo) ? (
+            <img 
+              src={logoUrl || user?.restaurantLogo} 
+              className="h-9 w-auto object-contain border border-[#EBE7E0] p-1 bg-white rounded-xl" 
+              alt={user?.restaurantName || slug} 
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-xl bg-[#171512] flex items-center justify-center text-white font-bold">
+              <UtensilsCrossed size={18} />
+            </div>
+          )}
           <div>
             <h1 className="text-sm font-bold text-[#171512] capitalize" style={SERIF}>
               {slug} <span className="text-[10px] font-sans text-[#8A8580] uppercase tracking-wider font-semibold ml-1">Waiter Terminal</span>
