@@ -888,6 +888,13 @@ export default function AdminView() {
         {/* Sidebar Bottom */}
         <div className="px-4 pb-5 mt-auto border-t border-slate-100 pt-4 flex flex-col gap-3">
           <button
+            onClick={() => handleLaunchTerminal('staff')}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#E63946]/10 hover:bg-[#E63946]/20 text-[#E63946] font-bold text-xs rounded-xl transition-colors border border-[#E63946]/20"
+          >
+            <Key size={14} />
+            Launch Terminal
+          </button>
+          <button
             onClick={logout}
             className="w-full text-xs text-red-400 hover:text-red-600 font-bold transition-colors py-1.5"
           >
