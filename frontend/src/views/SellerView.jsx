@@ -752,7 +752,12 @@ export default function SellerView() {
   // Billing Modal
   const openBillingModal = (order, isHistory = false) => {
     setBillingOrder(order);
-    setBillingPaymentMethod(null);
+    const isDelivery = order.order_type === 'delivery' || (order.table_name || order.table) === 'Delivery';
+    if (isDelivery) {
+      setBillingPaymentMethod('cash');
+    } else {
+      setBillingPaymentMethod(null);
+    }
     setIsHistoryViewOnly(isHistory);
     setIsBillingModalOpen(true);
   };
@@ -2180,14 +2185,14 @@ export default function SellerView() {
         {/* Settle & Billing Modal overlay */}
         {isBillingModalOpen && billingOrder && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-5 print:p-0 print:bg-white print:text-black">
-            <div className="bg-white border border-zinc-200 w-full max-w-[480px] p-6 rounded-2xl shadow-xl print:border-none print:shadow-none print:p-0 print:bg-white print:max-w-full">
+            <div className="bg-white border border-zinc-200 w-full max-w-[480px] p-6 rounded-2xl shadow-xl max-h-[95vh] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:shadow-none print:p-0 print:bg-white print:max-w-full">
               <div className="flex justify-between items-center border-b border-zinc-100 pb-4 mb-5 print:hidden">
                 <h2 className="text-base font-bold text-black font-mono">{formatOrderId(billingOrder)}</h2>
                 <button onClick={() => setIsBillingModalOpen(false)} className="text-2xl text-zinc-400 hover:text-black transition-colors">✕</button>
               </div>
 
               {/* Paper Thermal Receipt ticket block */}
-              <div id="receipt-details" className="bg-white text-black p-5 font-mono text-xs border border-zinc-300 flex flex-col gap-2 mb-5 rounded-xl shadow-inner print:border-none print:shadow-none print:p-0">
+              <div id="receipt-details" className="bg-white text-black p-5 font-mono text-xs border border-zinc-300 flex flex-col gap-2 mb-5 rounded-xl shadow-inner max-h-[300px] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:shadow-none print:p-0">
                 <div className="border-t-2 border-b-2 border-double border-black py-2 text-center">
                   {user?.restaurantLogo && (
                     <img src={user.restaurantLogo} className="h-8 w-auto object-contain mx-auto mb-1 print:block border border-zinc-200 p-0.5 rounded-lg" alt={user.restaurantName} />
@@ -2360,16 +2365,19 @@ export default function SellerView() {
                     >
                       Cash Settle
                     </button>
-                    <button
-                      onClick={() => setBillingPaymentMethod('card')}
-                      className={`flex-1 py-3 border font-bold text-sm transition-all flex items-center justify-center rounded-xl ${
-                        billingPaymentMethod === 'card'
-                          ? 'bg-black text-white border-black hover:bg-zinc-800'
-                          : 'bg-white text-black border-zinc-200 hover:bg-zinc-50'
-                      }`}
-                    >
-                      Credit Card
-                    </button>
+                    {/* Hide Card button if Delivery/Rider order */}
+                    {!(billingOrder.order_type === 'delivery' || (billingOrder.table_name || billingOrder.table) === 'Delivery') && (
+                      <button
+                        onClick={() => setBillingPaymentMethod('card')}
+                        className={`flex-1 py-3 border font-bold text-sm transition-all flex items-center justify-center rounded-xl ${
+                          billingPaymentMethod === 'card'
+                            ? 'bg-black text-white border-black hover:bg-zinc-800'
+                            : 'bg-white text-black border-zinc-200 hover:bg-zinc-50'
+                        }`}
+                      >
+                        Credit Card
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
