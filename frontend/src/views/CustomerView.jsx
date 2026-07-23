@@ -96,13 +96,18 @@ export default function CustomerView() {
   };
 
   // Verify QR Token or Code on backend
-  const verifyQrTokenOnServer = async (tokenOrCode, slug) => {
+  const verifyQrTokenOnServer = async (tokenOrCode, tableNum, slug) => {
     const targetSlug = slug || getStoredRestaurantSlug();
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/qr/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: tokenOrCode, token: tokenOrCode, restaurant: targetSlug }),
+        body: JSON.stringify({ 
+          code: tokenOrCode, 
+          token: tokenOrCode, 
+          table: tableNum || undefined, 
+          restaurant: targetSlug 
+        }),
       });
       if (res.ok) {
         const result = await res.json();
@@ -112,6 +117,17 @@ export default function CustomerView() {
           if (result.data.tableNumber) {
             setCurrentTable(result.data.tableNumber);
             localStorage.setItem("ordering_table", result.data.tableNumber);
+          }
+          if (result.data.isOccupiedMismatch) {
+            setIsTableOccupiedByOthers(true);
+            setOccupiedOrderDetails({
+              activeOrderId: result.data.activeOrderId,
+              orderNumber: result.data.orderNumber,
+              status: result.data.status
+            });
+          } else {
+            setIsTableOccupiedByOthers(false);
+            setOccupiedOrderDetails(null);
           }
           if (result.data.tableCode) {
             setQrToken(result.data.tableCode);
@@ -180,7 +196,7 @@ export default function CustomerView() {
         setShowDemoTableOverlay(false);
         const code = result.data.tableCode;
         setQrToken(code);
-        await verifyQrTokenOnServer(code, restSlug);
+        await verifyQrTokenOnServer(code, selectedDemoTable, restSlug);
         checkTableOccupiedStatus(selectedDemoTable, restSlug);
       }
     } catch (e) {
@@ -211,13 +227,18 @@ export default function CustomerView() {
 
     if (codeOrToken) {
       setQrToken(codeOrToken);
-      verifyQrTokenOnServer(codeOrToken, restId).then((data) => {
+      const secureToken = urlQrToken || urlTable;
+      const tableNumber = urlQrToken ? urlTable : null;
+
+      verifyQrTokenOnServer(secureToken, tableNumber, restId).then((data) => {
         if (data && data.tableNumber) {
-          checkTableOccupiedStatus(data.tableNumber, restId);
-          const savedOrderId = localStorage.getItem(`active_order_table_${data.tableNumber}`);
-          if (savedOrderId) {
-            setActiveOrderId(savedOrderId);
-            fetchOrderDetails(savedOrderId, restId);
+          if (!data.isOccupiedMismatch) {
+            checkTableOccupiedStatus(data.tableNumber, restId);
+            const savedOrderId = localStorage.getItem(`active_order_table_${data.tableNumber}`);
+            if (savedOrderId) {
+              setActiveOrderId(savedOrderId);
+              fetchOrderDetails(savedOrderId, restId);
+            }
           }
         }
       });

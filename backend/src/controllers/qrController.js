@@ -16,7 +16,7 @@ class QRController {
       const tableCode = TableCodeManager.getTableCode(restaurant, table);
       const host = req.get('host');
       const protocol = req.protocol;
-      const qrUrl = `${protocol}://${host}/r/${restaurant}/customer?table=${tableCode}`;
+      const qrUrl = `${protocol}://${host}/r/${restaurant}/customer?table=${table}&t=${tableCode}`;
 
       // Create a signed JWT session for backwards safety if required
       const token = jwt.sign({ table, tableNumber: table, tableCode, restaurantId: restaurant }, JWT_SECRET, { expiresIn: '365d' });
@@ -59,8 +59,10 @@ class QRController {
    */
   static async verifyQRToken(req, res) {
     try {
-      const code = req.query.code || req.body.code || req.body.table || req.body.token;
+      const code = req.query.code || req.body.code || req.body.token;
+      const table = req.query.table || req.body.table;
       const restaurant = req.query.restaurant || req.body.restaurant || req.restaurantSlug || 'default';
+      const supabase = require('../utils/supabase').defaultClient;
 
       if (!code) {
         return res.status(400).json({ success: false, message: 'Table code is required.' });
@@ -83,8 +85,43 @@ class QRController {
         } catch (e) {}
       }
 
-      // If still not resolved -> Return 404 Invalid Table Code!
+      // If still not resolved -> Check if table is occupied for duplicate occupied scan overlay
       if (!resolved) {
+        if (table) {
+          try {
+            const { data: activeOrders } = await supabase.rpc('query_tenant', {
+              tenant_slug: restaurant,
+              table_name: 'orders',
+              operation: 'SELECT_ACTIVE'
+            });
+
+            const tableOrder = (activeOrders || []).find(o => {
+              const oTable = (o.table_name || o.table || '').toString();
+              const targetTable = (table || '').toString();
+              return oTable === targetTable || oTable === `Table ${targetTable}` || `Table ${oTable}` === targetTable;
+            });
+
+            if (tableOrder) {
+              return res.status(200).json({
+                success: true,
+                data: {
+                  sessionId: 'occupied-mismatch-session',
+                  table: String(table),
+                  tableNumber: String(table),
+                  tableCode: code,
+                  restaurantId: restaurant,
+                  isOccupiedMismatch: true,
+                  activeOrderId: tableOrder.id,
+                  orderNumber: tableOrder.order_number,
+                  status: tableOrder.status
+                }
+              });
+            }
+          } catch (rpcErr) {
+            console.error('[verifyQRToken] RPC active orders fetch failed:', rpcErr.message);
+          }
+        }
+
         return res.status(404).json({
           success: false,
           message: `Invalid or unassigned table code "${code}". Table access denied.`
@@ -127,7 +164,7 @@ class QRController {
       const newCode = TableCodeManager.regenerateCode(restaurant, table);
       const host = req.get('host');
       const protocol = req.protocol;
-      const qrUrl = `${protocol}://${host}/r/${restaurant}/customer?table=${newCode}`;
+      const qrUrl = `${protocol}://${host}/r/${restaurant}/customer?table=${table}&t=${newCode}`;
 
       return res.status(200).json({
         success: true,
