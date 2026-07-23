@@ -202,6 +202,26 @@ export function AuthProvider({ children }) {
     return result;
   };
 
+  const registerTrial = async (name, slug, email, password) => {
+    const res = await fetch(`${BACKEND_URL}/api/v1/auth/admin/register-trial`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, slug, email, password })
+    });
+    const result = await res.json();
+    if (!result.success) {
+      const err = new Error(result.message);
+      throw err;
+    }
+
+    const { token: newToken, user: userData } = result.data;
+    const fullUser = { ...userData, displayName: name };
+    setToken(newToken);
+    setUser(fullUser);
+    saveSession(newToken, 'admin', fullUser);
+    return userData;
+  };
+
   // ─── Staff Login (Employee Code/Password) ───
   const staffLogin = async (username, password, adminEmail) => {
     const params = new URLSearchParams(window.location.search);
@@ -267,6 +287,7 @@ export function AuthProvider({ children }) {
     handleGoogleCallback,
     adminLogin,
     adminSignup,
+    registerTrial,
     staffLogin,
     logout,
     authHeaders,

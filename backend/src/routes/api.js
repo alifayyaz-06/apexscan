@@ -23,7 +23,7 @@ router.get('/waiter/sessions/active', optionalAuthenticate, WaiterSessionControl
 router.post('/waiter/sessions/end', authenticate, authorize('waiter', 'admin', 'sales_staff'), WaiterSessionController.endSession);
 
 // Validation schemas
-const { adminLoginSchema, adminSignupSchema, staffLoginSchema, staffRefreshSchema, forgotPasswordSchema } = require('../validators/auth.schemas');
+const { adminLoginSchema, adminSignupSchema, staffLoginSchema, staffRefreshSchema, forgotPasswordSchema, registerTrialSchema } = require('../validators/auth.schemas');
 const { createOrderSchema, updateOrderStatusSchema, completePaySchema, updateOrderItemsSchema } = require('../validators/order.schemas');
 const { createMenuItemSchema, updateMenuItemSchema } = require('../validators/menu.schemas');
 const { createStaffSchema, updateStaffSchema } = require('../validators/staff.schemas');
@@ -45,6 +45,7 @@ router.put('/restaurants/settings', authenticate, authorize('admin'), tenantGuar
 // ─── Auth Routes (Public) ───
 router.post('/auth/admin/login', authLimiter, validate(adminLoginSchema), AuthController.adminLogin);
 router.post('/auth/admin/signup', authLimiter, validate(adminSignupSchema), AuthController.adminSignup);
+router.post('/auth/admin/register-trial', authLimiter, validate(registerTrialSchema), AuthController.registerRestaurantTrial);
 router.post('/auth/admin/forgot-password', authLimiter, validate(forgotPasswordSchema), AuthController.forgotPassword);
 router.post('/auth/admin/reset-password-otp', authLimiter, AuthController.resetPasswordOtp);
 router.post('/auth/staff/login', authLimiter, validate(staffLoginSchema), AuthController.staffLogin);
@@ -56,6 +57,10 @@ router.get('/super/restaurants', authenticate, authorize('super_admin'), SuperAd
 router.post('/super/restaurants', authenticate, authorize('super_admin'), validate(createRestaurantSchema), SuperAdminController.createRestaurant);
 router.patch('/super/restaurants/:id', authenticate, authorize('super_admin'), validate(updateRestaurantSchema), SuperAdminController.updateRestaurant);
 router.delete('/super/restaurants/:id', authenticate, authorize('super_admin'), SuperAdminController.deleteRestaurant);
+router.get('/super/trial-history', authenticate, authorize('super_admin'), SuperAdminController.getTrialHistory);
+router.patch('/super/restaurants/:id/trial/extend', authenticate, authorize('super_admin'), SuperAdminController.extendTrial);
+router.patch('/super/restaurants/:id/trial/end', authenticate, authorize('super_admin'), SuperAdminController.endTrial);
+router.patch('/super/restaurants/:id/trial/convert', authenticate, authorize('super_admin'), SuperAdminController.convertTrialToPaid);
 
 // ─── Staff Management Routes (Admin protected) ───
 router.get('/staff', authenticate, authorize('admin', 'sales_staff'), tenantGuard, StaffController.getAll);

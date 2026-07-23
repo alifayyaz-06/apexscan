@@ -31,6 +31,15 @@ export default function AdminView() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashboardChartTab, setDashboardChartTab] = useState('today');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const getTrialRemainingDays = () => {
+    if (!user?.expiresAt) return 0;
+    const now = new Date();
+    const exp = new Date(user.expiresAt);
+    const diff = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+  };
 
   const handleTabChange = (key) => {
     setActiveTab(key);
@@ -927,6 +936,48 @@ export default function AdminView() {
 
         {/* ── Tab Content ── */}
         <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
+
+          {/* Free Trial Banner */}
+          {user?.plan === 'trial' && (() => {
+            const days = getTrialRemainingDays();
+            let bannerCls = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+            let dotCls = 'bg-emerald-500';
+            if (days <= 1) {
+              bannerCls = 'bg-rose-50 text-rose-800 border-rose-200';
+              dotCls = 'bg-rose-500';
+            } else if (days <= 3) {
+              bannerCls = 'bg-orange-50 text-orange-800 border-orange-200';
+              dotCls = 'bg-orange-500';
+            } else if (days <= 7) {
+              bannerCls = 'bg-amber-50 text-amber-800 border-amber-200';
+              dotCls = 'bg-amber-500';
+            }
+
+            return (
+              <div className={`mb-6 p-4 rounded-2xl border ${bannerCls} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm animate-fade-in`}>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-3.5 w-3.5 relative">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotCls}`}></span>
+                    <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${dotCls}`}></span>
+                  </span>
+                  <div>
+                    <span className="font-extrabold text-sm block">
+                      {days > 0 ? `Free Trial — ${days} Days Remaining` : 'Trial Expired'}
+                    </span>
+                    <span className="text-xs opacity-85 block mt-0.5">
+                      Your 14-day free trial will end on {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="px-4 py-2 bg-black hover:bg-zinc-900 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            );
+          })()}
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {/* TAB 1: MENU EDITOR                              */}
@@ -2199,6 +2250,39 @@ export default function AdminView() {
                   Delete
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-6 shadow-2xl relative text-left">
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-900 transition-colors"
+            >
+              ✕
+            </button>
+            <div className="mb-5 text-center">
+              <span className="text-3xl block mb-2">⭐</span>
+              <h3 className="text-lg font-black text-[#2B2D42]">Upgrade to Premium</h3>
+              <p className="text-xs text-slate-400 mt-1">Unlock unlimited active orders, staff management, analytics, and custom QR codes permanently.</p>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 space-y-2">
+                <p>To upgrade your subscription, please contact support:</p>
+                <div className="flex flex-col gap-1 mt-2">
+                  <a href="mailto:alifayyaz958362@gmail.com" className="font-extrabold text-black hover:underline">📧 alifayyaz958362@gmail.com</a>
+                  <a href="https://wa.me/92312064468" target="_blank" rel="noreferrer" className="font-extrabold text-indigo-600 hover:underline">💬 WhatsApp Support</a>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full py-2.5 bg-black hover:bg-zinc-900 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

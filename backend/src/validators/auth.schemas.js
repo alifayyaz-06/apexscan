@@ -27,10 +27,18 @@ const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email format').trim().toLowerCase()
 });
 
+const registerTrialSchema = z.object({
+  name: z.string().min(2, 'Restaurant name must be at least 2 characters').max(100),
+  slug: z.string().min(2, 'Slug must be at least 2 characters').max(100).regex(/^[a-z0-9-_]+$/, 'Slug can only contain lowercase letters, numbers, hyphens, and underscores'),
+  email: z.string().email('Invalid email format').trim().toLowerCase(),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128)
+});
+
 module.exports = {
   adminLoginSchema,
   adminSignupSchema,
   staffLoginSchema,
   staffRefreshSchema,
-  forgotPasswordSchema
+  forgotPasswordSchema,
+  registerTrialSchema
 };

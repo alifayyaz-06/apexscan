@@ -226,6 +226,151 @@ class SuperAdminController {
       return res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  /**
+   * GET /api/v1/super/trial-history — List all trial registrations
+   */
+  static async getTrialHistory(req, res) {
+    try {
+      const { data, error } = await supabase
+        .from('trial_history')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return res.status(200).json({ success: true, data });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/super/restaurants/:id/trial/extend
+   */
+  static async extendTrial(req, res) {
+    try {
+      const { id } = req.params;
+      const { days } = req.body; // Can be positive (extend) or negative (shorten)
+      if (days === undefined || isNaN(days)) {
+        return res.status(400).json({ success: false, message: 'Number of days is required.' });
+      }
+
+      // Fetch current restaurant details
+      const { data: restaurant, error: fetchErr } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+      if (!restaurant) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+      }
+
+      const currentExpiresAt = restaurant.expires_at ? new Date(restaurant.expires_at) : new Date();
+      const currentNow = new Date();
+
+      // If already expired, extend from now; otherwise extend from current expiry date
+      const baseDate = currentExpiresAt > currentNow ? currentExpiresAt : currentNow;
+      const newExpiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+      const updates = {
+        expires_at: newExpiresAt.toISOString(),
+        subscription_status: newExpiresAt > currentNow ? 'active' : 'expired'
+      };
+
+      const { data, error } = await supabase
+        .from('restaurants')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+      return res.status(200).json({ success: true, data });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/super/restaurants/:id/trial/end
+   */
+  static async endTrial(req, res) {
+    try {
+      const { id } = req.params;
+
+      const updates = {
+        expires_at: new Date().toISOString(),
+        subscription_status: 'expired'
+      };
+
+      const { data, error } = await supabase
+        .from('restaurants')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+      return res.status(200).json({ success: true, data });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/super/restaurants/:id/trial/convert
+   */
+  static async convertTrialToPaid(req, res) {
+    try {
+      const { id } = req.params;
+      const { subscriptionDays } = req.body;
+      const days = parseInt(subscriptionDays, 10) || 30;
+
+      // Fetch restaurant to get owner email
+      const { data: restaurant, error: fetchErr } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+      if (!restaurant) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+      }
+
+      const activationDate = new Date();
+      const updates = {
+        plan: 'premium',
+        subscription_status: 'active',
+        activated_at: activationDate.toISOString(),
+        subscription_days: days,
+        expires_at: new Date(activationDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('restaurants')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+
+      // Mark subscription_purchased = true in trial_history
+      if (restaurant.owner_email) {
+        await supabase
+          .from('trial_history')
+          .update({ subscription_purchased: true })
+          .ilike('email', restaurant.owner_email.trim());
+      }
+
+      return res.status(200).json({ success: true, data });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
 }
 
 module.exports = SuperAdminController;

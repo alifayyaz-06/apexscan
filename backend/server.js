@@ -18,6 +18,10 @@ const wss = new WebSocket.Server({ server });
 // Run DB check & migrations on startup
 dbInit();
 
+// Start background free trial expiration checks
+const { startTrialExpirationCheck } = require('./src/utils/trialExpirationScheduler');
+startTrialExpirationCheck();
+
 const PORT = process.env.PORT || envs.port;
 // Security headers
 app.use(helmet());

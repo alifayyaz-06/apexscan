@@ -181,12 +181,28 @@ class OrderController {
           // If it's a slug, resolve its UUID
           const { data: restData } = await defaultClient
             .from('restaurants')
-            .select('id, slug')
+            .select('id, slug, subscription_status, expires_at')
             .eq('slug', restaurantParam.toLowerCase())
             .maybeSingle();
           if (restData) {
             resolvedRestaurantId = restData.id;
             restaurantParam = restData.slug;
+
+            // Enforce subscription verification for customer order submission
+            if (restData.subscription_status !== 'unlimited') {
+              const now = new Date();
+              const expiresAt = restData.expires_at ? new Date(restData.expires_at) : null;
+              if ((expiresAt && now > expiresAt) || restData.subscription_status === 'expired') {
+                if (restData.subscription_status !== 'expired') {
+                  await defaultClient.from('restaurants').update({ subscription_status: 'expired' }).eq('id', restData.id);
+                }
+                return res.status(403).json({
+                  success: false,
+                  message: "This restaurant's trial or subscription has expired. Online ordering is disabled.",
+                  code: 'SUBSCRIPTION_EXPIRED'
+                });
+              }
+            }
           }
         }
         client = getTenantClient(restaurantParam);

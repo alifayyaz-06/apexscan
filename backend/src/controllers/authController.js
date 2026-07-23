@@ -111,11 +111,161 @@ class AuthController {
             restaurantId: restaurant ? restaurant.id : null,
             restaurantName: restaurant ? restaurant.name : null,
             restaurantSlug: restaurant ? restaurant.slug : null,
-            restaurantLogo: restaurant ? restaurant.logo_url : null
+            restaurantLogo: restaurant ? restaurant.logo_url : null,
+            plan: restaurant ? restaurant.plan : null,
+            subscriptionStatus: restaurant ? restaurant.subscription_status : null,
+            expiresAt: restaurant ? restaurant.expires_at : null
           }
         }
       });
     } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/admin/register-trial
+   * Public onboarding registration for 14-day free trial.
+   */
+  static async registerRestaurantTrial(req, res) {
+    try {
+      const { registerTrialSchema } = require('../validators/auth.schemas');
+      const validationResult = registerTrialSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: validationResult.error.errors.map(e => e.message).join(', ')
+        });
+      }
+
+      let { name, slug, email, password } = validationResult.data;
+
+      // Normalize slug and email
+      slug = slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-');
+      email = email.toLowerCase().trim();
+
+      // Double-check email in trial_history first to prevent creating auth user in case of duplicate
+      const { data: existingTrial } = await supabase
+        .from('trial_history')
+        .select('id')
+        .ilike('email', email)
+        .maybeSingle();
+
+      if (existingTrial) {
+        return res.status(400).json({
+          success: false,
+          message: 'This email has already used its free trial. Please purchase a subscription or contact support.'
+        });
+      }
+
+      // Check if slug is already taken (excluding deleted restaurants)
+      const { data: existingSlug } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (existingSlug) {
+        return res.status(400).json({
+          success: false,
+          message: 'This restaurant slug is already registered. Please choose another slug.'
+        });
+      }
+
+      // Check if email already registered in active restaurants
+      const { data: existingRestEmail } = await supabase
+        .from('restaurants')
+        .select('id')
+        .ilike('owner_email', email)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (existingRestEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'This email is already registered with an active restaurant.'
+        });
+      }
+
+      // 1. Create the Auth User in Supabase Auth using admin client
+      const { createClient } = require('@supabase/supabase-js');
+      const adminClient = createClient(envs.supabaseUrl, envs.supabaseServiceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+      });
+
+      const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true
+      });
+
+      if (authError) {
+        return res.status(400).json({ success: false, message: authError.message });
+      }
+
+      // 2. Call the register_trial_restaurant database function inside transaction
+      const { data: restaurantId, error: rpcError } = await supabase.rpc('register_trial_restaurant', {
+        p_name: name,
+        p_slug: slug,
+        p_owner_email: email
+      });
+
+      if (rpcError) {
+        console.error('[registerRestaurantTrial] RPC error:', rpcError.message);
+        // Rollback created auth user
+        await adminClient.auth.admin.deleteUser(authData.user.id);
+        return res.status(400).json({ success: false, message: rpcError.message });
+      }
+
+      // 3. Provision the schema
+      const { error: schemaErr } = await supabase.rpc('create_tenant_schema', {
+        tenant_slug: slug
+      });
+      if (schemaErr) {
+        console.error('[registerRestaurantTrial] Error provisioning tenant schema:', schemaErr.message);
+      }
+
+      // 4. Log the user in to get active session
+      const { data: sessionData, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (loginError) {
+        return res.status(400).json({
+          success: false,
+          message: `Account created but auto-login failed: ${loginError.message}. Please log in manually.`
+        });
+      }
+
+      // Fetch the restaurant record
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurantId)
+        .maybeSingle();
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          token: sessionData.session.access_token,
+          refreshToken: sessionData.session.refresh_token,
+          user: {
+            email: sessionData.user.email,
+            role: 'admin',
+            restaurantId: restaurantId,
+            restaurantName: name,
+            restaurantSlug: slug,
+            restaurantLogo: null,
+            plan: 'trial',
+            subscriptionStatus: 'active',
+            expiresAt: restaurant ? restaurant.expires_at : null
+          }
+        }
+      });
+    } catch (err) {
+      console.error('[registerRestaurantTrial] Exception:', err.message);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -537,7 +687,10 @@ class AuthController {
           restaurantId: req.user.restaurantId || null,
           restaurantName: req.user.restaurant ? req.user.restaurant.name : null,
           restaurantSlug: req.user.restaurant ? req.user.restaurant.slug : null,
-          restaurantLogo: req.user.restaurant ? req.user.restaurant.logo_url : null
+          restaurantLogo: req.user.restaurant ? req.user.restaurant.logo_url : null,
+          plan: req.user.restaurant ? req.user.restaurant.plan : null,
+          subscriptionStatus: req.user.restaurant ? req.user.restaurant.subscription_status : null,
+          expiresAt: req.user.restaurant ? req.user.restaurant.expires_at : null
         }
       });
     } catch (err) {

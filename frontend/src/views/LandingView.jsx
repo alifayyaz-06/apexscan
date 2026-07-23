@@ -18,18 +18,20 @@ import LandingFooter from '../components/Landing/LandingFooter';
 import LoginModal from '../components/Landing/LoginModal';
 import ResetPasswordModal from '../components/Landing/ResetPasswordModal';
 import SetPasswordModal from '../components/Landing/SetPasswordModal';
+import RegisterTrialModal from '../components/Landing/RegisterTrialModal';
 
 // Customization constants
 const WHATSAPP_NUMBER = "92312064468"; 
 const SUPPORT_EMAIL = "alifayyaz958362@gmail.com";
 
 export default function LandingView() {
-  const { adminLogin } = useAuth();
+  const { adminLogin, registerTrial } = useAuth();
   
   // Modal controllers
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [showTrialRegisterModal, setShowTrialRegisterModal] = useState(false);
 
   // Login credentials
   const [email, setEmail] = useState('');
@@ -63,6 +65,12 @@ export default function LandingView() {
   const [trialPhone, setTrialPhone] = useState('');
   const [trialRestName, setTrialRestName] = useState('');
   const [trialLoading, setTrialLoading] = useState(false);
+
+  // Trial registration modal states
+  const [trialSlug, setTrialSlug] = useState('');
+  const [trialPassword, setTrialPassword] = useState('');
+  const [trialRegError, setTrialRegError] = useState('');
+  const [trialRegLoading, setTrialRegLoading] = useState(false);
 
   // Scroll reveal animation observer
   useEffect(() => {
@@ -275,26 +283,55 @@ export default function LandingView() {
   const handleTrialSubmit = (e) => {
     if (e) e.preventDefault();
     setTrialLoading(true);
-    
-    const message = `Hi! I want to request a free trial for my restaurant.
-My Details:
-- Name: ${trialName}
-- Restaurant: ${trialRestName}
-- Phone/WhatsApp: ${trialPhone}
-- Email: ${trialEmail}`;
-    
-    const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-    
-    setTimeout(() => {
+
+    if (!trialEmail || !trialRestName) {
+      toast.warning("Please fill in email and restaurant name first.");
       setTrialLoading(false);
-      toast.success("Trial request generated! Redirecting to WhatsApp...");
-      window.open(waUrl, '_blank');
+      return;
+    }
+
+    // Auto-generate slug from restaurant name
+    const cleanSlug = trialRestName.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    setTrialSlug(cleanSlug);
+    
+    // Reset trial registration fields
+    setTrialPassword('');
+    setTrialRegError('');
+    
+    setTrialLoading(false);
+    setShowTrialRegisterModal(true);
+  };
+
+  const handleTrialRegisterSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setTrialRegError('');
+    setTrialRegLoading(true);
+
+    try {
+      const userData = await registerTrial(trialName, trialSlug, trialEmail, trialPassword);
+      toast.success("Restaurant registered! Launching free trial...");
       
+      // Clear form states
       setTrialName('');
       setTrialEmail('');
       setTrialPhone('');
       setTrialRestName('');
-    }, 800);
+      setTrialPassword('');
+      setTrialSlug('');
+      
+      setShowTrialRegisterModal(false);
+      
+      // Redirect directly to dashboard
+      if (userData?.restaurantSlug) {
+        window.location.href = `/r/${userData.restaurantSlug}/admin`;
+      } else {
+        window.location.href = '/admin';
+      }
+    } catch (err) {
+      setTrialRegError(err.message || "Failed to create restaurant. Email or slug might already be registered.");
+    } finally {
+      setTrialRegLoading(false);
+    }
   };
 
   return (
@@ -433,6 +470,20 @@ My Details:
         onVerifyAndSet={handleSetPasswordSubmit}
         onChangeEmail={() => { setSetPassStep('email'); setSetPassError(''); setSetPassSuccess(''); }}
         onResendCode={handleSetPasswordSendCode}
+      />
+
+      <RegisterTrialModal
+        show={showTrialRegisterModal}
+        onClose={() => setShowTrialRegisterModal(false)}
+        restaurantName={trialRestName}
+        slug={trialSlug}
+        setSlug={setTrialSlug}
+        email={trialEmail}
+        password={trialPassword}
+        setPassword={setTrialPassword}
+        error={trialRegError}
+        loading={trialRegLoading}
+        onSubmit={handleTrialRegisterSubmit}
       />
 
       {/* Floating WhatsApp Widget */}
