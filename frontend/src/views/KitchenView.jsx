@@ -17,7 +17,7 @@ import {
 const BACKEND_URL = API_URL;
 
 export default function KitchenView() {
-  const { user, logout } = useAuth();
+  const { user, logout, token, authHeaders } = useAuth();
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("all");
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -32,7 +32,18 @@ export default function KitchenView() {
   const fetchKitchenOrders = async () => {
     const slug = getKitchenRestaurantSlug();
     try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/orders?restaurant=${slug}`);
+      const headers = { "Content-Type": "application/json" };
+      const authH = authHeaders ? authHeaders() : {};
+      if (authH.Authorization) headers.Authorization = authH.Authorization;
+      else if (token) headers.Authorization = `Bearer ${token}`;
+      else {
+        const storedToken = localStorage.getItem("staff_token") || localStorage.getItem("token") || localStorage.getItem("ordering_token");
+        if (storedToken) headers.Authorization = `Bearer ${storedToken}`;
+      }
+
+      const res = await fetch(`${BACKEND_URL}/api/v1/orders?restaurant=${slug}`, {
+        headers
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setOrders(data.data);
@@ -43,6 +54,11 @@ export default function KitchenView() {
   };
 
   useEffect(() => {
+    const slug = getKitchenRestaurantSlug();
+    if (slug) {
+      realTimeSync.registerRestaurant(slug, "kitchen");
+    }
+
     fetchKitchenOrders();
 
     // Auto refresh fallback interval
