@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { realTimeSync } from '../utils/socket';
-import { Edit2, Trash2, Printer, CheckCircle, Clock, AlertTriangle, XCircle, CreditCard, DollarSign, Plus, QrCode, Hand, UtensilsCrossed, ShoppingBag, Truck } from 'lucide-react';
+import { Edit2, Trash2, Printer, CheckCircle, Clock, AlertTriangle, XCircle, CreditCard, DollarSign, Plus, QrCode, Hand, UtensilsCrossed, ShoppingBag, Truck, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
