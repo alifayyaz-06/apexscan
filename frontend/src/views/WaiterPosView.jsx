@@ -569,12 +569,18 @@ export default function WaiterPosView() {
 
             <button
               onClick={() => handleOpenMenuForTable(selectedTable)}
-              disabled={!selectedTable}
+              disabled={!selectedTable || (user?.role === 'waiter' && !!tableOrdersMap[selectedTable])}
               className="w-full py-4 bg-[#7A2331] hover:bg-[#631c27] active:scale-98 text-white font-bold text-sm rounded-2xl shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               {tableOrdersMap[selectedTable] ? 'Add Items to Existing Order' : 'Open Menu'}
               <ArrowRight size={16} />
             </button>
+
+            {selectedTable && user?.role === 'waiter' && !!tableOrdersMap[selectedTable] && (
+              <p className="mt-3 text-[11px] text-[#7A2331] font-bold leading-normal bg-red-50/50 border border-red-200/50 p-2.5 rounded-xl text-center">
+                ⚠️ Active order in progress. Waiters are not permitted to modify active orders. Only Cashier/Seller POS can modify.
+              </p>
+            )}
           </div>
         </main>
       ) : (

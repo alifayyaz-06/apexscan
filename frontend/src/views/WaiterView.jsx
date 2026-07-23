@@ -1515,7 +1515,7 @@ export default function WaiterView() {
             </div>
           </div>
           
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 w-full sm:w-auto">
             <button
               onClick={() => {
                 loadRidersList();

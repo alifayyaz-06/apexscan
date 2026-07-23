@@ -93,7 +93,7 @@ router.get('/orders/table-status/:table', OrderController.checkTableStatus);
 router.get('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, OrderController.getOrderById);
 router.patch('/orders/:id/status', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, validate(updateOrderStatusSchema), OrderController.updateOrderStatus);
 router.post('/orders/:id/pay', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, validate(completePaySchema), OrderController.completeAndPayOrder);
-router.put('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff', 'waiter'), tenantGuard, validate(updateOrderItemsSchema), OrderController.updateOrderItems);
+router.put('/orders/:id', authenticate, authorize('admin', 'kitchen_staff', 'sales_staff'), tenantGuard, validate(updateOrderItemsSchema), OrderController.updateOrderItems);
 
 // ─── Sales Routes ───
 router.get('/sales/summary', authenticate, authorize('admin', 'sales_staff'), tenantGuard, SalesController.getSalesSummary);
