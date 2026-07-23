@@ -861,18 +861,21 @@ export default function SellerView() {
     return orders;
   };
 
-  // Get active riders who have 0 pending delivery orders
-  const getAvailableRiders = () => {
-    const busyRiderIds = new Set();
+  // Get active riders with their active delivery order counts
+  const getRidersWithOrderCounts = () => {
+    const counts = {};
     liveOrders.forEach(order => {
-      const isDelivery = order.order_type === 'delivery' || order.billing?.order_type === 'delivery';
-      const isPendingPay = order.billing?.paymentStatus === 'pending';
+      const isDelivery = order.order_type === 'delivery' || order.billing?.order_type === 'delivery' || (order.table_name || order.table) === 'Delivery';
+      const isActive = order.status !== 'completed' && order.status !== 'cancelled';
       const rider = order.billing?.rider;
-      if (isDelivery && isPendingPay && rider && rider.id) {
-        busyRiderIds.add(rider.id);
+      if (isDelivery && isActive && rider && rider.id) {
+        counts[rider.id] = (counts[rider.id] || 0) + 1;
       }
     });
-    return ridersList.filter(r => !busyRiderIds.has(r.id));
+    return ridersList.map(r => ({
+      ...r,
+      activeOrderCount: counts[r.id] || 0
+    }));
   };
 
   // Helper to determine currently occupied tables from active orders
@@ -1372,16 +1375,31 @@ export default function SellerView() {
                               className="w-full p-2.5 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:border-black text-black"
                             >
                               <option value="">Choose Rider...</option>
-                              {getAvailableRiders().map(r => (
-                                <option key={r.id} value={r.id}>{r.display_name} ({r.employee_code})</option>
+                              {getRidersWithOrderCounts().map(r => (
+                                <option key={r.id} value={r.id}>
+                                  {r.display_name} ({r.employee_code}){r.activeOrderCount > 0 ? ` [Busy - ${r.activeOrderCount} Active]` : ''}
+                                </option>
                               ))}
                             </select>
                           </div>
-                          {manualRiderId && (
-                            <div className="text-[10px] text-zinc-500 self-end mb-2">
-                              Status: <span className="font-bold text-emerald-600">Active</span>
-                            </div>
-                          )}
+                          {manualRiderId && (() => {
+                            const selectedRider = getRidersWithOrderCounts().find(r => r.id === manualRiderId);
+                            if (selectedRider && selectedRider.activeOrderCount > 0) {
+                              return (
+                                <div className="text-[10px] text-zinc-500 self-end mb-2 flex flex-col items-end">
+                                  <span className="font-bold text-amber-600 flex items-center gap-1">
+                                    <AlertTriangle size={10} /> Double Booking Warning
+                                  </span>
+                                  <span className="text-[9px] text-zinc-400">Rider has {selectedRider.activeOrderCount} active order(s)</span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="text-[10px] text-zinc-500 self-end mb-2">
+                                Status: <span className="font-bold text-emerald-600">Active / Free</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
