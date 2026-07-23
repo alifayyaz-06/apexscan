@@ -180,6 +180,20 @@ export default function WaiterPosView() {
       }
     });
 
+    const cleanupAckCall = realTimeSync.on('WAITER_ACKNOWLEDGED', (data) => {
+      if (data && data.callId) {
+        setAssistanceRequests(prev =>
+          prev.map(c => c.id === data.callId ? { ...c, status: 'accepted' } : c)
+        );
+      }
+    });
+
+    const cleanupDismissCall = realTimeSync.on('WAITER_DISMISSED', (data) => {
+      if (data && data.callId) {
+        setAssistanceRequests(prev => prev.filter(c => c.id !== data.callId));
+      }
+    });
+
     // Auto-refresh/polling loop every 5 seconds
     const pollInterval = setInterval(() => {
       fetchTableSessions();
@@ -190,6 +204,8 @@ export default function WaiterPosView() {
     return () => {
       cleanupSocket();
       cleanupCallWaiter();
+      cleanupAckCall();
+      cleanupDismissCall();
       clearInterval(pollInterval);
       stopLoudAlarm();
     };
