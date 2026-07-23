@@ -273,8 +273,16 @@ export function AuthProvider({ children }) {
 
   // Convenience: returns headers object for fetch calls
   const authHeaders = () => {
-    if (!token) return {};
-    return { 'Authorization': `Bearer ${token}` };
+    const activeToken = token || (() => {
+      try {
+        const session = JSON.parse(localStorage.getItem('smartqr_session') || '{}');
+        return session.token || null;
+      } catch (e) {
+        return null;
+      }
+    })();
+    if (!activeToken) return {};
+    return { 'Authorization': `Bearer ${activeToken}` };
   };
 
   const value = {

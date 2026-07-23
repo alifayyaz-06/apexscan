@@ -400,6 +400,59 @@ export default function WaiterPosView() {
     return matchesCat && matchesSearch;
   });
 
+  const renderAssistancePopup = () => {
+    if (!unacknowledgedCall) return null;
+    return (
+      <div className="fixed inset-0 bg-[#7A2331]/40 backdrop-blur-md z-[999] flex items-center justify-center p-6">
+        <div className="bg-white border border-[#EBE7E0] max-w-md w-full p-8 rounded-3xl shadow-2xl relative text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-rose-50 text-[#7A2331] border border-rose-200 mx-auto flex items-center justify-center animate-bounce">
+            <span className="text-3xl">🔔</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#7A2331]">
+              Customer Needs Assistance
+            </span>
+            <h1 className="text-3xl font-bold text-[#171512] mt-1" style={SERIF}>
+              {unacknowledgedCall.tableName}
+            </h1>
+            <p className="text-xs text-[#8A8580] mt-1.5 leading-relaxed">
+              A customer at this table is calling for assistance. Please respond immediately.
+            </p>
+          </div>
+
+          <div className="bg-[#F9F8F6] border border-[#EBE7E0] rounded-2xl p-4 text-left space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#8A8580]">Restaurant Name:</span>
+              <span className="font-bold text-[#171512] capitalize">{unacknowledgedCall.restaurantName}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#8A8580]">Request Time:</span>
+              <span className="font-bold text-[#171512]">
+                {new Date(unacknowledgedCall.requestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleDismissCall(unacknowledgedCall.id)}
+              className="flex-1 py-3.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-extrabold text-xs rounded-2xl transition-all cursor-pointer border border-[#EBE7E0]"
+            >
+              ❌ Dismiss
+            </button>
+            <button
+              onClick={() => handleAcknowledgeCall(unacknowledgedCall.id)}
+              className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all cursor-pointer"
+            >
+              ✅ Acknowledge
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#F9F8F6] text-[#171512] pb-24" style={SANS}>
       <FontImport />
