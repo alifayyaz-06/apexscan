@@ -138,13 +138,27 @@ class AuthController {
         });
       }
 
-      let { name, slug, email, password } = validationResult.data;
-
-      // Normalize slug and email
-      slug = slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '-');
+      let { email, password } = validationResult.data;
       email = email.toLowerCase().trim();
 
-      // Double-check email in trial_history first to prevent creating auth user in case of duplicate
+      // 1. Fetch pre-created/invited restaurant from the Super Admin list
+      const { data: restaurant, error: fetchErr } = await supabase
+        .from('restaurants')
+        .select('*')
+        .ilike('owner_email', email)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+
+      if (!restaurant) {
+        return res.status(403).json({
+          success: false,
+          message: 'This email is not authorized or invited by the Super Admin yet. Please contact support.'
+        });
+      }
+
+      // 2. Ensure they haven't already registered/onboarded this email in trial history
       const { data: existingTrial } = await supabase
         .from('trial_history')
         .select('id')
@@ -154,41 +168,11 @@ class AuthController {
       if (existingTrial) {
         return res.status(400).json({
           success: false,
-          message: 'This email has already used its free trial. Please purchase a subscription or contact support.'
+          message: 'This email has already claimed its free trial. Please log in or contact support.'
         });
       }
 
-      // Check if slug is already taken (excluding deleted restaurants)
-      const { data: existingSlug } = await supabase
-        .from('restaurants')
-        .select('id')
-        .eq('slug', slug)
-        .is('deleted_at', null)
-        .maybeSingle();
-
-      if (existingSlug) {
-        return res.status(400).json({
-          success: false,
-          message: 'This restaurant slug is already registered. Please choose another slug.'
-        });
-      }
-
-      // Check if email already registered in active restaurants
-      const { data: existingRestEmail } = await supabase
-        .from('restaurants')
-        .select('id')
-        .ilike('owner_email', email)
-        .is('deleted_at', null)
-        .maybeSingle();
-
-      if (existingRestEmail) {
-        return res.status(400).json({
-          success: false,
-          message: 'This email is already registered with an active restaurant.'
-        });
-      }
-
-      // 1. Create the Auth User in Supabase Auth using admin client
+      // 3. Create the Auth User in Supabase Auth using admin client
       const { createClient } = require('@supabase/supabase-js');
       const adminClient = createClient(envs.supabaseUrl, envs.supabaseServiceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false }
@@ -201,32 +185,60 @@ class AuthController {
       });
 
       if (authError) {
+        if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+          return res.status(400).json({ success: false, message: 'An account has already been set up for this email. Please log in.' });
+        }
         return res.status(400).json({ success: false, message: authError.message });
       }
 
-      // 2. Call the register_trial_restaurant database function inside transaction
-      const { data: restaurantId, error: rpcError } = await supabase.rpc('register_trial_restaurant', {
-        p_name: name,
-        p_slug: slug,
-        p_owner_email: email
-      });
+      // 4. Update the existing restaurant to trial status
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-      if (rpcError) {
-        console.error('[registerRestaurantTrial] RPC error:', rpcError.message);
+      const { error: updateErr } = await supabase
+        .from('restaurants')
+        .update({
+          plan: 'trial',
+          subscription_status: 'active',
+          activated_at: now.toISOString(),
+          subscription_days: 14,
+          expires_at: expiresAt.toISOString(),
+          is_active: true
+        })
+        .eq('id', restaurant.id);
+
+      if (updateErr) {
         // Rollback created auth user
         await adminClient.auth.admin.deleteUser(authData.user.id);
-        return res.status(400).json({ success: false, message: rpcError.message });
+        return res.status(400).json({ success: false, message: 'Failed to update restaurant subscription state.' });
       }
 
-      // 3. Provision the schema
+      // 5. Log inside trial history
+      const { error: histErr } = await supabase
+        .from('trial_history')
+        .insert([{
+          email: email,
+          restaurant_id: restaurant.id,
+          restaurant_name: restaurant.name,
+          trial_start: now.toISOString(),
+          trial_end: expiresAt.toISOString(),
+          trial_claimed_at: now.toISOString(),
+          trial_used: true
+        }]);
+
+      if (histErr) {
+        console.error('Error logging trial history:', histErr.message);
+      }
+
+      // 6. Provision the schema
       const { error: schemaErr } = await supabase.rpc('create_tenant_schema', {
-        tenant_slug: slug
+        tenant_slug: restaurant.slug
       });
       if (schemaErr) {
         console.error('[registerRestaurantTrial] Error provisioning tenant schema:', schemaErr.message);
       }
 
-      // 4. Log the user in to get active session
+      // 7. Log the user in to get active session
       const { data: sessionData, error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -239,13 +251,6 @@ class AuthController {
         });
       }
 
-      // Fetch the restaurant record
-      const { data: restaurant } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('id', restaurantId)
-        .maybeSingle();
-
       return res.status(200).json({
         success: true,
         data: {
@@ -254,13 +259,13 @@ class AuthController {
           user: {
             email: sessionData.user.email,
             role: 'admin',
-            restaurantId: restaurantId,
-            restaurantName: name,
-            restaurantSlug: slug,
-            restaurantLogo: null,
+            restaurantId: restaurant.id,
+            restaurantName: restaurant.name,
+            restaurantSlug: restaurant.slug,
+            restaurantLogo: restaurant.logo_url || null,
             plan: 'trial',
             subscriptionStatus: 'active',
-            expiresAt: restaurant ? restaurant.expires_at : null
+            expiresAt: expiresAt.toISOString()
           }
         }
       });
