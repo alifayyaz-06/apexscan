@@ -16,11 +16,18 @@ const UploadController = require('../controllers/uploadController');
 const RestaurantController = require('../controllers/restaurantController');
 const QRController = require('../controllers/qrController');
 const WaiterSessionController = require('../controllers/waiterSessionController');
+const WaiterCallController = require('../controllers/waiterCallController');
 
 // ─── Waiter Table Session Routes ───
 router.post('/waiter/sessions/start', authenticate, authorize('waiter', 'admin', 'sales_staff'), WaiterSessionController.startSession);
 router.get('/waiter/sessions/active', optionalAuthenticate, WaiterSessionController.getActiveSessions);
 router.post('/waiter/sessions/end', authenticate, authorize('waiter', 'admin', 'sales_staff'), WaiterSessionController.endSession);
+
+// ─── Waiter Call Notification Routes ───
+router.post('/orders/call-waiter', orderLimiter, WaiterCallController.callWaiter);
+router.get('/waiter/calls/active', authenticate, authorize('waiter', 'admin', 'sales_staff'), tenantGuard, WaiterCallController.getActiveCalls);
+router.post('/waiter/calls/:id/acknowledge', authenticate, authorize('waiter', 'admin', 'sales_staff'), tenantGuard, WaiterCallController.acknowledgeCall);
+router.post('/waiter/calls/:id/dismiss', authenticate, authorize('waiter', 'admin', 'sales_staff'), tenantGuard, WaiterCallController.dismissCall);
 
 // Validation schemas
 const { adminLoginSchema, adminSignupSchema, staffLoginSchema, staffRefreshSchema, forgotPasswordSchema, registerTrialSchema } = require('../validators/auth.schemas');

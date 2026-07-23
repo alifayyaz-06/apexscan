@@ -26,6 +26,77 @@ function FontImport() {
   );
 }
 
+let audioCtx = null;
+let oscillator1 = null;
+let oscillator2 = null;
+let gainNode = null;
+
+function playLoudAlarm() {
+  try {
+    if (oscillator1 || oscillator2) return; // Already playing
+    
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator1 = audioCtx.createOscillator();
+    oscillator1.type = 'sawtooth';
+    oscillator1.frequency.setValueAtTime(880, audioCtx.currentTime);
+    oscillator1.connect(gainNode);
+    
+    oscillator2 = audioCtx.createOscillator();
+    oscillator2.type = 'square';
+    oscillator2.frequency.setValueAtTime(885, audioCtx.currentTime);
+    oscillator2.connect(gainNode);
+    
+    const modulateInterval = setInterval(() => {
+      if (!audioCtx) {
+        clearInterval(modulateInterval);
+        return;
+      }
+      const now = audioCtx.currentTime;
+      oscillator1.frequency.setValueAtTime(880, now);
+      oscillator2.frequency.setValueAtTime(980, now + 0.1);
+    }, 200);
+
+    oscillator1.start();
+    oscillator2.start();
+    
+    audioCtx.modulateInterval = modulateInterval;
+  } catch (err) {
+    console.error("Web Audio API failed to start alarm:", err);
+  }
+}
+
+function stopLoudAlarm() {
+  try {
+    if (audioCtx) {
+      if (audioCtx.modulateInterval) clearInterval(audioCtx.modulateInterval);
+      if (oscillator1) {
+        oscillator1.stop();
+        oscillator1.disconnect();
+      }
+      if (oscillator2) {
+        oscillator2.stop();
+        oscillator2.disconnect();
+      }
+      if (gainNode) {
+        gainNode.disconnect();
+      }
+      audioCtx.close();
+    }
+  } catch (err) {
+    console.error("Failed to stop alarm:", err);
+  } finally {
+    audioCtx = null;
+    oscillator1 = null;
+    oscillator2 = null;
+    gainNode = null;
+  }
+}
+
 export default function WaiterPosView() {
   const { user, logout, token, authHeaders } = useAuth();
   const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant') || 'cheezious';
@@ -50,6 +121,9 @@ export default function WaiterPosView() {
   const [orderNotes, setOrderNotes] = useState('');
   const [submittingOrder, setSubmittingOrder] = useState(false);
 
+  // Assistance Queue State
+  const [assistanceRequests, setAssistanceRequests] = useState([]);
+
   // Auth headers
   const getHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
@@ -69,24 +143,49 @@ export default function WaiterPosView() {
     fetchMenu();
     fetchTableSessions();
     fetchActiveOrders();
+    fetchActiveCalls();
 
-    realTimeSync.registerRestaurant(slug, 'waiter');
+    realTimeSync.registerRestaurant(slug, 'waiter', user?.id || user?.staffId || user?.employeeCode);
+    
     const cleanupSocket = realTimeSync.onOrderUpdate(() => {
       fetchTableSessions();
       fetchActiveOrders();
+    });
+
+    const cleanupCallWaiter = realTimeSync.on('CALL_WAITER', (data) => {
+      if (data && data.call) {
+        setAssistanceRequests(prev => {
+          if (prev.some(c => c.id === data.call.id)) return prev;
+          return [...prev, data.call];
+        });
+      }
     });
 
     // Auto-refresh/polling loop every 5 seconds
     const pollInterval = setInterval(() => {
       fetchTableSessions();
       fetchActiveOrders();
+      fetchActiveCalls();
     }, 5000);
 
     return () => {
       cleanupSocket();
+      cleanupCallWaiter();
       clearInterval(pollInterval);
+      stopLoudAlarm();
     };
   }, [slug]);
+
+  // Synchronize alarm with unacknowledged calls
+  const unacknowledgedCall = assistanceRequests.find(r => r.status === 'waiting');
+
+  useEffect(() => {
+    if (unacknowledgedCall) {
+      playLoudAlarm();
+    } else {
+      stopLoudAlarm();
+    }
+  }, [unacknowledgedCall]);
 
   const fetchRestaurantSettings = async () => {
     try {
@@ -110,6 +209,50 @@ export default function WaiterPosView() {
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) setActiveSessions(data.data);
     } catch (e) {}
+  };
+
+  const fetchActiveCalls = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/waiter/calls/active?waiterId=${user?.id || user?.staffId}&restaurant=${slug}`, {
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setAssistanceRequests(data.data);
+      }
+    } catch (e) {
+      console.error("Error fetching active waiter calls:", e);
+    }
+  };
+
+  const handleAcknowledgeCall = async (callId) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/waiter/calls/${callId}/acknowledge?restaurant=${slug}`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setAssistanceRequests(prev =>
+          prev.map(c => c.id === callId ? { ...c, status: 'accepted' } : c)
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDismissCall = async (callId) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/waiter/calls/${callId}/dismiss?restaurant=${slug}`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setAssistanceRequests(prev => prev.filter(c => c.id !== callId));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchActiveOrders = async () => {
@@ -290,7 +433,50 @@ export default function WaiterPosView() {
 
       {/* ── STEP 1: TABLE SELECTION (CENTERED) ────────────────── */}
       {!isMenuOpen ? (
-        <main className="flex items-center justify-center min-h-[calc(100vh-64px)] px-4">
+        <main className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4 py-8 space-y-6">
+          
+          {/* Active Assistance Requests List */}
+          {assistanceRequests.length > 0 && (
+            <div className="w-full max-w-sm bg-white border border-[#EBE7E0] rounded-3xl p-6 shadow-sm text-left">
+              <h3 className="text-xs font-extrabold text-[#7A2331] uppercase tracking-wider mb-4 flex items-center gap-1.5" style={SERIF}>
+                <span>🔔</span> Active Assistance Requests ({assistanceRequests.length})
+              </h3>
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                {assistanceRequests.map((req) => (
+                  <div key={req.id} className="flex justify-between items-center bg-[#F9F8F6] border border-[#EBE7E0] rounded-2xl p-3.5">
+                    <div>
+                      <div className="text-xs font-bold text-[#171512]" style={SERIF}>{req.tableName}</div>
+                      <div className="text-[10px] text-[#8A8580] mt-0.5">
+                        {new Date(req.requestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </div>
+                      <div className={`inline-block text-[9px] font-extrabold uppercase mt-1.5 px-2 py-0.5 rounded-full ${
+                        req.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-amber-50 text-amber-700 border border-amber-200/60 animate-pulse'
+                      }`}>
+                        {req.status === 'accepted' ? 'Accepted' : 'Waiting'}
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {req.status !== 'accepted' && (
+                        <button
+                          onClick={() => handleAcknowledgeCall(req.id)}
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] rounded-xl transition-all cursor-pointer"
+                        >
+                          Acknowledge
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDismissCall(req.id)}
+                        className="px-2.5 py-1.5 bg-zinc-200 hover:bg-zinc-300 text-zinc-700 font-extrabold text-[10px] rounded-xl transition-all cursor-pointer"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-[#EBE7E0] rounded-3xl p-6 sm:p-8 shadow-sm text-center w-full max-w-sm">
             <div className="w-14 h-14 rounded-2xl bg-amber-50 text-[#7A2331] border border-amber-200/60 mx-auto flex items-center justify-center mb-4">
               <TableIcon size={26} />
@@ -529,6 +715,7 @@ export default function WaiterPosView() {
           )}
         </main>
       )}
+      {renderAssistancePopup()}
     </div>
   );
 }

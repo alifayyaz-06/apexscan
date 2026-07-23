@@ -57,11 +57,12 @@ class RealTimeSync {
     };
   }
 
-  registerRestaurant(restaurantId, role = 'customer') {
+  registerRestaurant(restaurantId, role = 'customer', staffId = null) {
     this.restaurantId = restaurantId;
     this.role = role;
+    this.staffId = staffId;
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type: 'REGISTER', restaurantId, role }));
+      this.socket.send(JSON.stringify({ type: 'REGISTER', restaurantId, role, staffId }));
     }
   }
 

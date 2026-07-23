@@ -66,6 +66,12 @@ function broadcast(data) {
           return;
         }
       }
+
+      // Route only to targeted waiter if targeted
+      if (data.targetWaiterId && client.staffId !== data.targetWaiterId) {
+        return;
+      }
+
       client.send(messageStr);
     }
   });
@@ -91,7 +97,8 @@ wss.on('connection', (ws) => {
       if (payload.type === 'REGISTER') {
         ws.restaurantId = payload.restaurantId;
         ws.role = payload.role || 'customer';
-        console.log(`Registered WebSocket client: restaurantId=${ws.restaurantId}, role=${ws.role}`);
+        ws.staffId = payload.staffId || payload.userId;
+        console.log(`Registered WebSocket client: restaurantId=${ws.restaurantId}, role=${ws.role}, staffId=${ws.staffId}`);
       }
     } catch (err) {
       console.error('Error parsing client socket message:', err.message);

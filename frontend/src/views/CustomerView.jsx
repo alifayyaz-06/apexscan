@@ -59,6 +59,11 @@ export default function CustomerView() {
   const [qrToken, setQrToken] = useState(null);
   const [isQrValid, setIsQrValid] = useState(true);
 
+  // Call Waiter states
+  const [showCallWaiterConfirm, setShowCallWaiterConfirm] = useState(false);
+  const [waiterCooldown, setWaiterCooldown] = useState(0);
+  const [waiterCallLoading, setWaiterCallLoading] = useState(false);
+
   // Helper for stored restaurant slug
   const getStoredRestaurantSlug = () => restaurantId || localStorage.getItem("ordering_restaurant") || DEFAULT_RESTAURANT_SLUG;
 
@@ -93,6 +98,107 @@ export default function CustomerView() {
     } catch (err) {
       console.error("Table status check error:", err);
     }
+  };
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (waiterCooldown > 0) {
+      const timer = setTimeout(() => {
+        setWaiterCooldown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [waiterCooldown]);
+
+  // Hook up acknowledgement listener
+  useEffect(() => {
+    const handleAck = (data) => {
+      const targetTable = currentTable || localStorage.getItem("ordering_table");
+      if (data && String(data.table) === String(targetTable)) {
+        toast.success(data.message || "Your waiter is on the way.");
+      }
+    };
+    realTimeSync.on('WAITER_ACKNOWLEDGED', handleAck);
+    return () => {
+      realTimeSync.off('WAITER_ACKNOWLEDGED', handleAck);
+    };
+  }, [currentTable]);
+
+  const handleCallWaiter = async () => {
+    setShowCallWaiterConfirm(false);
+    setWaiterCallLoading(true);
+    try {
+      const tableNum = currentTable || "1";
+      const slug = getStoredRestaurantSlug();
+      const res = await fetch(`${BACKEND_URL}/api/v1/orders/call-waiter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: tableNum, restaurantSlug: slug })
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        toast.success(result.message || "Your waiter has been notified and will assist you shortly.");
+        setWaiterCooldown(45); // 45s cooldown
+      } else {
+        toast.error(result.message || "No waiter is currently assigned to your table. Please try again in a moment.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Connection failed. Could not call waiter.");
+    } finally {
+      setWaiterCallLoading(false);
+    }
+  };
+
+  const renderCallWaiterButton = () => {
+    if (!currentTable) return null;
+    return (
+      <div className="fixed bottom-6 left-6 z-40">
+        <button
+          onClick={() => setShowCallWaiterConfirm(true)}
+          disabled={waiterCooldown > 0 || waiterCallLoading}
+          className={`flex items-center gap-2 py-3 px-5 rounded-full font-extrabold text-xs shadow-lg transition-all border border-zinc-200/50 cursor-pointer ${
+            waiterCooldown > 0
+              ? 'bg-zinc-150 text-zinc-400 cursor-not-allowed'
+              : 'bg-white hover:bg-zinc-100 text-zinc-950 hover:scale-105'
+          }`}
+        >
+          <span>🔔</span>
+          {waiterCooldown > 0 ? `Call Waiter (${waiterCooldown}s)` : 'Call Waiter'}
+        </button>
+      </div>
+    );
+  };
+
+  const renderCallWaiterModal = () => {
+    if (!showCallWaiterConfirm) return null;
+    return (
+      <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl border border-[#ECECEC] max-w-sm w-full p-6 shadow-2xl relative text-left">
+          <div className="mb-6">
+            <h2 className="text-lg font-extrabold text-[#111111] tracking-tight">Call Your Waiter</h2>
+            <p className="text-[#666666] text-xs mt-1 leading-normal">
+              Do you want to call your waiter?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowCallWaiterConfirm(false)}
+              className="flex-1 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 font-extrabold text-xs rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCallWaiter}
+              disabled={waiterCallLoading}
+              className="flex-1 py-2.5 bg-[#111111] hover:bg-zinc-900 text-white font-extrabold text-xs rounded-xl transition-colors cursor-pointer"
+            >
+              {waiterCallLoading ? 'Calling...' : 'Call Waiter'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Verify QR Token or Code on backend
@@ -221,6 +327,7 @@ export default function CustomerView() {
     if (restId) {
       setRestaurantId(restId);
       localStorage.setItem("ordering_restaurant", restId);
+      realTimeSync.registerRestaurant(restId, 'customer');
     }
 
     const codeOrToken = urlQrToken || urlTable;
@@ -558,6 +665,8 @@ export default function CustomerView() {
           activeOrder={activeOrder}
           currentTable={currentTable}
         />
+        {renderCallWaiterButton()}
+        {renderCallWaiterModal()}
       </div>
     );
   }
@@ -729,6 +838,9 @@ export default function CustomerView() {
           FontImport={FontImport}
         />
       )}
+
+      {renderCallWaiterButton()}
+      {renderCallWaiterModal()}
     </div>
   );
 }
