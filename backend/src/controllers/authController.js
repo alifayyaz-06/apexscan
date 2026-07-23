@@ -55,7 +55,11 @@ class AuthController {
         otpStore.set(email, otp);
 
         console.log(`[adminLogin] First-time setup. Sending OTP ${otp} to ${email}`);
-        await sendOtp(email, otp);
+        try {
+          await sendOtp(email, otp);
+        } catch (mailErr) {
+          console.error(`[adminLogin] First-time setup mail sending failed but proceeding:`, mailErr.message);
+        }
 
         return res.status(200).json({
           success: false,
@@ -393,8 +397,10 @@ class AuthController {
 
       console.log(`[forgotPassword] DB result:`, { restaurant, dbErr: dbErr?.message });
 
-      if (dbErr || !restaurant || !restaurant.is_active || isSuperAdmin) {
-        console.log(`[forgotPassword] Blocked: dbErr=${!!dbErr}, noRestaurant=${!restaurant}, inactive=${restaurant && !restaurant.is_active}, superAdmin=${isSuperAdmin}`);
+      // Super admins and active restaurants are allowed to reset passwords.
+      // If the email doesn't exist or is inactive, we return a generic success message for security, without sending mail.
+      if (dbErr || (!restaurant && !isSuperAdmin) || (restaurant && !restaurant.is_active)) {
+        console.log(`[forgotPassword] Blocked: dbErr=${!!dbErr}, noRestaurant=${!restaurant}, inactive=${restaurant && !restaurant.is_active}`);
         return res.status(200).json({
           success: true,
           message: 'If this email is registered, a password reset code has been sent.'
@@ -408,8 +414,12 @@ class AuthController {
       otpStore.set(normalizedEmail, otp);
 
       console.log(`[forgotPassword] Sending OTP ${otp} to ${normalizedEmail}`);
-      await sendOtp(normalizedEmail, otp);
-      console.log(`[forgotPassword] Email sent successfully`);
+      try {
+        await sendOtp(normalizedEmail, otp);
+        console.log(`[forgotPassword] Email sent successfully`);
+      } catch (mailErr) {
+        console.error(`[forgotPassword] Reset password mail sending failed but proceeding:`, mailErr.message);
+      }
 
       return res.status(200).json({
         success: true,
