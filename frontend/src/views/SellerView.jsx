@@ -11,7 +11,7 @@ const BACKEND_URL = API_URL;
 
 
 
-export default function WaiterView() {
+export default function SellerView() {
   const { user, logout, authHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState('live'); // 'live' | 'bills' | 'history'
   const [liveOrders, setLiveOrders] = useState([]);
@@ -57,6 +57,8 @@ export default function WaiterView() {
   const [posLoading, setPosLoading] = useState(false);
   const [activeNotification, setActiveNotification] = useState(null);
   const [ridersList, setRidersList] = useState([]);
+  const [showCashSummary, setShowCashSummary] = useState(false);
+  const [salesSummary, setSalesSummary] = useState(null);
   // Ref to track whether audio has been unlocked by user interaction
   const audioUnlocked = React.useRef(false);
 
@@ -657,6 +659,18 @@ export default function WaiterView() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchSalesSummary = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/sales/summary`, { headers: authHeaders() });
+      const result = await res.json();
+      if (result.success) {
+        setSalesSummary(result.data);
+      }
+    } catch (err) {
+      console.error("Failed to load sales summary:", err);
     }
   };
 
@@ -1460,6 +1474,61 @@ export default function WaiterView() {
     );
   }
 
+  const renderCashSummaryModal = () => {
+    if (!showCashSummary) return null;
+    const metrics = salesSummary?.metrics?.today || { revenue: 0, count: 0, paymentRevenue: { cash: 0, card: 0 } };
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div className="bg-white text-zinc-900 w-full max-w-sm rounded-3xl p-6 border border-zinc-200 shadow-2xl space-y-6">
+          <div className="flex justify-between items-center pb-3 border-b border-zinc-100">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 block">End of Shift</span>
+              <h3 className="text-base font-bold text-zinc-900">Today's Cash Drawer Summary</h3>
+            </div>
+            <button
+              onClick={() => setShowCashSummary(false)}
+              className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-950 cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4 text-center space-y-1">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Total Sales Revenue</span>
+              <div className="text-3xl font-black text-zinc-950 font-mono">
+                Rs {metrics.revenue.toFixed(2)}
+              </div>
+              <p className="text-[10px] text-zinc-500 font-semibold">{metrics.count} completed transactions today</p>
+            </div>
+
+            <div className="border border-zinc-200 rounded-2xl p-4 divide-y divide-zinc-100 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500 font-semibold">Cash Payments</span>
+                <span className="font-mono font-bold text-zinc-900">Rs {parseFloat(metrics.paymentRevenue?.cash || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs pt-3">
+                <span className="text-zinc-500 font-semibold">Card Payments</span>
+                <span className="font-mono font-bold text-zinc-900">Rs {parseFloat(metrics.paymentRevenue?.card || 0).toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <p className="text-[10px] text-zinc-400 text-center leading-normal">
+              Compare the cash payments amount above with the physical cash in your drawer to balance.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowCashSummary(false)}
+            className="w-full py-3.5 bg-black hover:bg-zinc-800 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer text-center"
+          >
+            Close Summary
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6">
       {activeNotification && (
@@ -1541,10 +1610,20 @@ export default function WaiterView() {
                 setManualTable(firstAvailable);
                 setIsManualOrderOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-black text-white hover:bg-zinc-800 text-xs font-bold rounded-xl transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-black text-white hover:bg-zinc-800 text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               <Plus size={14} strokeWidth={3} />
               New Manual Order
+            </button>
+            <button
+              onClick={() => {
+                fetchSalesSummary();
+                setShowCashSummary(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-700 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
+            >
+              <DollarSign size={14} />
+              Cash Summary
             </button>
             <nav className="flex bg-zinc-50 border border-zinc-200 rounded-xl p-1 gap-1">
               <button
@@ -2329,6 +2408,7 @@ export default function WaiterView() {
             </div>
           </div>
         )}
+        {renderCashSummaryModal()}
       </div>
     </div>
   );

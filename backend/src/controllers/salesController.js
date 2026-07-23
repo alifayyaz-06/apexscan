@@ -27,6 +27,7 @@ class SalesController {
       let todayRevenue = 0;
       let todayCount = 0;
       let todayPaymentMethods = { cash: 0, card: 0 };
+      let todayPaymentRevenue = { cash: 0, card: 0 };
       
       let weekRevenue = 0;
       let weekCount = 0;
@@ -73,9 +74,13 @@ class SalesController {
         if (orderDate >= todayStart) {
           todayRevenue += total;
           todayCount++;
-          const method = order.billing.paymentMethod;
+          const method = order.billing.paymentMethod ? order.billing.paymentMethod.toLowerCase() : 'cash';
           if (todayPaymentMethods[method] !== undefined) {
             todayPaymentMethods[method]++;
+            todayPaymentRevenue[method] += total;
+          } else {
+            todayPaymentMethods[method] = 1;
+            todayPaymentRevenue[method] = total;
           }
           
           // Map to hourly index (11 AM to 10 PM)
@@ -136,7 +141,7 @@ class SalesController {
         success: true,
         data: {
           metrics: {
-            today: { revenue: todayRevenue, count: todayCount, paymentMethods: todayPaymentMethods },
+            today: { revenue: todayRevenue, count: todayCount, paymentMethods: todayPaymentMethods, paymentRevenue: todayPaymentRevenue },
             week: { revenue: weekRevenue, count: weekCount },
             month: { revenue: monthRevenue, count: monthCount },
             allTimeCompletedCount: completedOrders.length

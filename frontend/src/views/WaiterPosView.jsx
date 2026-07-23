@@ -33,9 +33,27 @@ let gainNode = null;
 
 function playLoudAlarm() {
   try {
-    if (oscillator1 || oscillator2) return; // Already playing
+    if (audioCtx) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      if (oscillator1 || oscillator2) return; // Already playing
+    } else {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
     
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Add gesture listeners to automatically resume if suspended by browser
+    if (audioCtx.state === 'suspended') {
+      const resumeAudio = () => {
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+        window.removeEventListener('click', resumeAudio);
+        window.removeEventListener('touchstart', resumeAudio);
+      };
+      window.addEventListener('click', resumeAudio);
+      window.addEventListener('touchstart', resumeAudio);
+    }
     
     gainNode = audioCtx.createGain();
     gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);

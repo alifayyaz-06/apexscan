@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { supabase } from './utils/supabaseClient';
 import LandingView from './views/LandingView';
 import CustomerView from './views/CustomerView';
-import WaiterView from './views/WaiterView';
+import SellerView from './views/SellerView';
 import WaiterPosView from './views/WaiterPosView';
 import KitchenView from './views/KitchenView';
 import AdminView from './views/AdminView';
@@ -185,7 +185,7 @@ function AppContent() {
       window.history.replaceState(null, '', targetLogin);
       return <LoginView />;
     }
-    return <WaiterView />;
+    return <SellerView />;
   }
 
   // 6b. Waiter Table Dashboard & Tablet POS Terminal (New)
