@@ -6,7 +6,7 @@ import { API_URL } from '../utils/config';
 import { formatCurrency, formatOrderId } from '../utils/formatters';
 import {
   UtensilsCrossed, LogOut, CheckCircle, Clock, ShoppingBag, Plus, Minus,
-  ArrowLeft, ArrowRight, Table as TableIcon, X, Search, PlusCircle
+  ArrowLeft, ArrowRight, Table as TableIcon, X, Search, PlusCircle, Bell, AlertTriangle
 } from 'lucide-react';
 
 const BACKEND_URL = API_URL;
@@ -176,15 +176,32 @@ export default function WaiterPosView() {
     };
   }, [slug]);
 
-  // Synchronize alarm with unacknowledged calls
+  // Synchronize alarm and vibration with unacknowledged calls
   const unacknowledgedCall = assistanceRequests.find(r => r.status === 'waiting');
 
   useEffect(() => {
+    let vibrateInterval = null;
     if (unacknowledgedCall) {
       playLoudAlarm();
+      if (navigator.vibrate) {
+        // Continuous vibration pattern
+        navigator.vibrate([400, 200, 400, 200, 400]);
+        vibrateInterval = setInterval(() => {
+          navigator.vibrate([400, 200, 400, 200, 400]);
+        }, 2000);
+      }
     } else {
       stopLoudAlarm();
+      if (navigator.vibrate) {
+        navigator.vibrate(0);
+      }
     }
+    return () => {
+      if (vibrateInterval) clearInterval(vibrateInterval);
+      if (navigator.vibrate) {
+        navigator.vibrate(0);
+      }
+    };
   }, [unacknowledgedCall]);
 
   const fetchRestaurantSettings = async () => {
@@ -406,7 +423,7 @@ export default function WaiterPosView() {
       <div className="fixed inset-0 bg-[#7A2331]/40 backdrop-blur-md z-[999] flex items-center justify-center p-6">
         <div className="bg-white border border-[#EBE7E0] max-w-md w-full p-8 rounded-3xl shadow-2xl relative text-center space-y-6">
           <div className="w-20 h-20 rounded-full bg-rose-50 text-[#7A2331] border border-rose-200 mx-auto flex items-center justify-center animate-bounce">
-            <span className="text-3xl">🔔</span>
+            <Bell size={32} />
           </div>
 
           <div>
@@ -439,13 +456,13 @@ export default function WaiterPosView() {
               onClick={() => handleDismissCall(unacknowledgedCall.id)}
               className="flex-1 py-3.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-extrabold text-xs rounded-2xl transition-all cursor-pointer border border-[#EBE7E0]"
             >
-              ❌ Dismiss
+              Dismiss
             </button>
             <button
               onClick={() => handleAcknowledgeCall(unacknowledgedCall.id)}
               className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-emerald-600/20 hover:shadow-lg transition-all cursor-pointer"
             >
-              ✅ Acknowledge
+              Acknowledge
             </button>
           </div>
         </div>
@@ -492,7 +509,7 @@ export default function WaiterPosView() {
           {assistanceRequests.length > 0 && (
             <div className="w-full max-w-sm bg-white border border-[#EBE7E0] rounded-3xl p-6 shadow-sm text-left">
               <h3 className="text-xs font-extrabold text-[#7A2331] uppercase tracking-wider mb-4 flex items-center gap-1.5" style={SERIF}>
-                <span>🔔</span> Active Assistance Requests ({assistanceRequests.length})
+                <Bell size={14} /> Active Assistance Requests ({assistanceRequests.length})
               </h3>
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                 {assistanceRequests.map((req) => (
@@ -577,8 +594,8 @@ export default function WaiterPosView() {
             </button>
 
             {selectedTable && user?.role === 'waiter' && !!tableOrdersMap[selectedTable] && (
-              <p className="mt-3 text-[11px] text-[#7A2331] font-bold leading-normal bg-red-50/50 border border-red-200/50 p-2.5 rounded-xl text-center">
-                ⚠️ Active order in progress. Waiters are not permitted to modify active orders. Only Cashier/Seller POS can modify.
+              <p className="mt-3 text-[11px] text-[#7A2331] font-bold leading-normal bg-red-50/50 border border-red-200/50 p-2.5 rounded-xl text-center flex items-center justify-center gap-1.5">
+                <AlertTriangle size={12} className="shrink-0" /> Active order in progress. Waiters are not permitted to modify active orders. Only Cashier/Seller POS can modify.
               </p>
             )}
           </div>
