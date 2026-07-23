@@ -69,12 +69,16 @@ async function authenticate(req, res, next) {
         const tenantClient = getTenantClient(restaurant.slug);
 
         // Fetch staff record from their private tenant schema
-        const { data: staffMember } = await defaultClient.rpc('query_tenant', {
+        const { data: staffResult } = await defaultClient.rpc('query_tenant', {
           tenant_slug: restaurant.slug,
           table_name: 'staff',
           operation: 'SELECT_BY_ID',
           query_id: decoded.staffId
         });
+
+        const staffMember = staffResult && staffResult.length > 0 
+          ? staffResult[0] 
+          : (staffResult && typeof staffResult === 'object' && !Array.isArray(staffResult) ? staffResult : null);
 
         if (!staffMember || !staffMember.is_active || staffMember.deleted_at) {
           return res.status(401).json({ success: false, message: 'Staff credentials invalid or shift ended.' });
