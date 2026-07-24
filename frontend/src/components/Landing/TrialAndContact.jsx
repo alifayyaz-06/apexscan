@@ -74,65 +74,28 @@ export default function TrialAndContact({
           </div>
         </div>
 
-        {/* Right Side: Free Trial Submission Form */}
-        <div id="contact" className="lg:col-span-7 bg-[#F8F8F8] border border-[#ECECEC] rounded-3xl p-6 sm:p-8 shadow-sm">
-          <h3 className="font-extrabold text-lg text-[#111111] mb-6">Wanna Experience Free Trial?</h3>
-          <form onSubmit={onSubmitTrial} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-[9px] font-extrabold text-[#666666] uppercase tracking-wider mb-1.5 block">Owner Name</label>
-              <input
-                type="text"
-                required
-                value={trialName}
-                onChange={e => setTrialName(e.target.value)}
-                placeholder="e.g. John Doe"
-                className="w-full py-2.5 px-4 bg-white border border-[#ECECEC] rounded-xl text-xs text-[#111111] focus:border-[#111111] outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-[9px] font-extrabold text-[#666666] uppercase tracking-wider mb-1.5 block">Restaurant Name</label>
-              <input
-                type="text"
-                required
-                value={trialRestName}
-                onChange={e => setTrialRestName(e.target.value)}
-                placeholder="e.g. Gourmet Bistro"
-                className="w-full py-2.5 px-4 bg-white border border-[#ECECEC] rounded-xl text-xs text-[#111111] focus:border-[#111111] outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-[9px] font-extrabold text-[#666666] uppercase tracking-wider mb-1.5 block">WhatsApp Support Number</label>
-              <input
-                type="tel"
-                required
-                value={trialPhone}
-                onChange={e => setTrialPhone(e.target.value)}
-                placeholder="e.g. +92 321 4455667"
-                className="w-full py-2.5 px-4 bg-white border border-[#ECECEC] rounded-xl text-xs text-[#111111] focus:border-[#111111] outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-[9px] font-extrabold text-[#666666] uppercase tracking-wider mb-1.5 block">Email Address</label>
-              <input
-                type="email"
-                required
-                value={trialEmail}
-                onChange={e => setTrialEmail(e.target.value)}
-                placeholder="owner@gourmetbistro.com"
-                className="w-full py-2.5 px-4 bg-white border border-[#ECECEC] rounded-xl text-xs text-[#111111] focus:border-[#111111] outline-none transition-colors"
-              />
-            </div>
-            
-            <div className="sm:col-span-2 mt-4">
-              <button
-                type="submit"
-                disabled={trialLoading}
-                className="w-full py-3 bg-[#C6FF2E] hover:bg-[#b5ee22] text-[#111111] font-extrabold text-xs rounded-xl shadow-sm border border-black/5 flex items-center justify-center gap-2 disabled:opacity-50 transition-all cursor-pointer"
-              >
-                {trialLoading ? "Generating Request..." : "Request 14-Day Free Trial"}
-              </button>
-            </div>
-          </form>
+        {/* Right Side: Free Trial Disabled info */}
+        <div id="contact" className="lg:col-span-7 bg-[#F8F8F8] border border-[#ECECEC] rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-center text-left">
+          <h3 className="font-extrabold text-lg text-[#111111] mb-4">Wanna Experience Free Trial?</h3>
+          <p className="text-sm text-[#666666] leading-relaxed mb-6">
+            14-Day self-service free trials are temporarily closed. To register your restaurant or request a custom onboarding/demo, please get in touch with our operations team directly:
+          </p>
+          <div className="flex flex-col gap-4 mt-2">
+            <a 
+              href={`https://wa.me/${WHATSAPP_NUMBER}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="py-3 px-6 bg-[#C6FF2E] hover:bg-[#b5ee22] text-[#111111] font-extrabold text-xs rounded-xl shadow-sm border border-black/5 text-center transition-all cursor-pointer block"
+            >
+              Contact Support on WhatsApp
+            </a>
+            <a 
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="py-3 px-6 bg-white hover:bg-zinc-50 text-[#111111] font-extrabold text-xs rounded-xl shadow-sm border border-[#ECECEC] text-center transition-all cursor-pointer block"
+            >
+              Email Operations Support
+            </a>
+          </div>
         </div>
       </div>
     </section>

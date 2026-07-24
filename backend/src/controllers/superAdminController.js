@@ -42,6 +42,7 @@ class SuperAdminController {
         return res.status(400).json({ success: false, message: 'name, slug, and ownerEmail are required.' });
       }
 
+      const cleanOwnerEmail = ownerEmail.toLowerCase().trim();
       const formattedSlug = slug.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
       // 1. Enforce unique slug check before creation (ignoring soft-deleted ones)
@@ -63,7 +64,7 @@ class SuperAdminController {
       const insertData = {
         name,
         slug: formattedSlug,
-        owner_email: ownerEmail,
+        owner_email: cleanOwnerEmail,
         plan: plan || 'trial',
         subscription_status: isUnlimited ? 'unlimited' : 'active',
         activated_at: now.toISOString(),
@@ -84,7 +85,7 @@ class SuperAdminController {
             .from('restaurants')
             .insert([{
               name,
-              owner_email: ownerEmail,
+              owner_email: cleanOwnerEmail,
               is_active: true
             }])
             .select()

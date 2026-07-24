@@ -1021,8 +1021,21 @@ export default function SellerView() {
   const servedOrders = filterOrders(liveOrders.filter(o => o.status === 'served' && o.order_type !== 'delivery'));
 
   const filteredHistory = historyOrders.filter(o => {
-    const term = searchHistoryQuery.toLowerCase();
-    return o.id.toLowerCase().includes(term) || (o.table || '').toString().toLowerCase().includes(term);
+    const q = searchHistoryQuery.toLowerCase().trim();
+    if (!q) return true;
+
+    const orderNum = String(o.order_number || '').toLowerCase();
+    const shortId = o.id.replace(/^inv-/i, '').toLowerCase();
+    const matchesOrderNumber = orderNum.includes(q) || shortId.includes(q) || o.id.toLowerCase().includes(q);
+
+    const timestamp = o.timestamp || o.created_at;
+    const dateStr = new Date(timestamp).toLocaleDateString().toLowerCase();
+    const dateIso = new Date(timestamp).toISOString().toLowerCase();
+    const dateText = new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateFullText = new Date(timestamp).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const matchesDate = dateStr.includes(q) || dateIso.includes(q) || dateText.includes(q) || dateFullText.includes(q);
+
+    return matchesOrderNumber || matchesDate;
   }).filter(o => o.status === 'completed' || o.status === 'cancelled');
 
   const ENTRIES_PER_PAGE = 10;

@@ -47,6 +47,10 @@ class AuthController {
         console.error('[adminLogin] Auth account check failed:', err.message);
       }
 
+      if (restaurant && !restaurant.is_active && !isSuper) {
+        return res.status(403).json({ success: false, message: 'Your restaurant account has been deactivated.' });
+      }
+
       if (restaurant && !authUser && !isSuper) {
         const otpStore = require('../utils/otpStore');
         const { sendOtp } = require('../utils/mailer');

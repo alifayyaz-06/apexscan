@@ -320,6 +320,19 @@ class OrderController {
       }
 
       const client = req.supabase || defaultClient;
+      const order = await Order.getById(id, client);
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found.' });
+      }
+
+      if (req.user && req.user.role === 'waiter') {
+        const orderWaiterId = order.billing?.waiter_id || order.waiter_id;
+        const currentWaiterId = req.user.id || req.user.staffId;
+        if (!orderWaiterId || String(orderWaiterId) !== String(currentWaiterId)) {
+          return res.status(403).json({ success: false, message: 'Forbidden. You are only authorized to edit orders that you punched.' });
+        }
+      }
+
       const updatedOrder = await Order.updateItems(id, items, client);
       if (!updatedOrder) {
         return res.status(404).json({ success: false, message: 'Order not found.' });

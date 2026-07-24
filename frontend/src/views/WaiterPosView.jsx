@@ -370,6 +370,10 @@ export default function WaiterPosView() {
   const grandTotal = subtotal + tax + serviceCharge;
 
   const currentTableOrder = tableOrdersMap[String(selectedTable)];
+  const currentWaiterUserId = user?.id || user?.staffId;
+  const isOrderOwner = !currentTableOrder || 
+    (currentTableOrder.billing?.waiter_id && String(currentTableOrder.billing.waiter_id) === String(currentWaiterUserId)) || 
+    (currentTableOrder.waiter_id && String(currentTableOrder.waiter_id) === String(currentWaiterUserId));
 
   // Submit NEW order or ADD items to existing order
   const handleSubmitWaiterOrder = async () => {
@@ -607,16 +611,16 @@ export default function WaiterPosView() {
 
             <button
               onClick={() => handleOpenMenuForTable(selectedTable)}
-              disabled={!selectedTable || (user?.role === 'waiter' && !!tableOrdersMap[selectedTable])}
+              disabled={!selectedTable || (user?.role === 'waiter' && !!tableOrdersMap[selectedTable] && !isOrderOwner)}
               className="w-full py-4 bg-[#7A2331] hover:bg-[#631c27] active:scale-98 text-white font-bold text-sm rounded-2xl shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               {tableOrdersMap[selectedTable] ? 'Add Items to Existing Order' : 'Open Menu'}
               <ArrowRight size={16} />
             </button>
 
-            {selectedTable && user?.role === 'waiter' && !!tableOrdersMap[selectedTable] && (
+            {selectedTable && user?.role === 'waiter' && !!tableOrdersMap[selectedTable] && !isOrderOwner && (
               <p className="mt-3 text-[11px] text-[#7A2331] font-bold leading-normal bg-red-50/50 border border-red-200/50 p-2.5 rounded-xl text-center flex items-center justify-center gap-1.5">
-                <AlertTriangle size={12} className="shrink-0" /> Active order in progress. Waiters are not permitted to modify active orders. Only Cashier/Seller POS can modify.
+                <AlertTriangle size={12} className="shrink-0" /> Active order in progress. You can only edit/add items to orders punched by you.
               </p>
             )}
           </div>
@@ -627,18 +631,33 @@ export default function WaiterPosView() {
 
           {/* Active Order Banner (if table has existing order) */}
           {currentTableOrder && (
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center justify-between gap-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">Existing Order Active</span>
-                <p className="text-sm font-bold text-[#171512]" style={SERIF}>
-                  Order #{currentTableOrder.order_number || formatOrderId(currentTableOrder.id)} — {currentTableOrder.items?.length || 0} items
-                </p>
-                <p className="text-[11px] text-amber-700 mt-0.5">
-                  Status: {currentTableOrder.status} | New items will be added to this order
-                </p>
+            isOrderOwner ? (
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">Existing Order Active</span>
+                  <p className="text-sm font-bold text-[#171512]" style={SERIF}>
+                    Order #{currentTableOrder.order_number || formatOrderId(currentTableOrder.id)} — {currentTableOrder.items?.length || 0} items
+                  </p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Status: {currentTableOrder.status} | New items will be added to this order
+                  </p>
+                </div>
+                <PlusCircle size={24} className="text-amber-600 shrink-0" />
               </div>
-              <PlusCircle size={24} className="text-amber-600 shrink-0" />
-            </div>
+            ) : (
+              <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">Locked (Punched by other Staff)</span>
+                  <p className="text-sm font-bold text-[#171512]" style={SERIF}>
+                    Order #{currentTableOrder.order_number || formatOrderId(currentTableOrder.id)}
+                  </p>
+                  <p className="text-[11px] text-rose-700 mt-0.5">
+                    You cannot add items to this order because it was created by another waiter.
+                  </p>
+                </div>
+                <AlertTriangle size={24} className="text-rose-600 shrink-0" />
+              </div>
+            )
           )}
 
           {/* Table Info Header */}
@@ -803,9 +822,9 @@ export default function WaiterPosView() {
                 </div>
 
                 {/* Submit */}
-                <button onClick={handleSubmitWaiterOrder} disabled={submittingOrder || cart.length === 0}
+                <button onClick={handleSubmitWaiterOrder} disabled={submittingOrder || cart.length === 0 || !isOrderOwner}
                   className="w-full py-3.5 bg-[#7A2331] hover:bg-[#631c27] active:scale-98 text-white font-bold text-xs rounded-2xl shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer">
-                  {submittingOrder ? 'Submitting...' : (currentTableOrder ? `Add ${cartItemCount} Item(s) to Order` : `Submit Order for Table ${selectedTable}`)}
+                  {submittingOrder ? 'Submitting...' : !isOrderOwner ? 'Locked (Punched by other Staff)' : (currentTableOrder ? `Add ${cartItemCount} Item(s) to Order` : `Submit Order for Table ${selectedTable}`)}
                 </button>
               </div>
             </div>

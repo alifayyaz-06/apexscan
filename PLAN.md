@@ -114,6 +114,20 @@ flowchart TD
 
 ---
 
+## 📋 Implementation Summary — Platform Hardening & Access Control (v1.7.0)
+
+### Key Enhancements & Bug Fixes in v1.7.0
+
+| Feature / Bug Fix | Need | Solution |
+|---|---|---|
+| **History View Pagination** | High latency on listing thousands of historical transactions | Integrated a premium pagination control footer (showing 10 items per page max) with previous/next controls and visible page number indicators across 4 key tables: Admin orders list, Seller completed/cancelled invoices list, Kitchen prepared list, and Superadmin audit trails. |
+| **Waiter Order Ownership** | Prevent waiters from modifying orders placed by other servers | Restructured order items PUT route and Waiter POS to enforce ownership gating. A waiter is blocked from adding items to active orders unless they were the one who punched/created it. |
+| **Self-Service Trial Disabling** | Business model shift away from self-service onboarding | Replaced the 14-day free trial request form on the landing page with direct WhatsApp/email support links. |
+| **Search Restrictions** | Search queries returned too many unrelated hits | Customized list search inputs to filter strictly by date and order number only, with prefix-agnostic matching (no need to write "INV-"). |
+| **Deactivated Account Protection** | Inactive tenants were still receiving first-time invitation OTP codes | Moved deactivation guards to execute before the first-time setup block in the admin login handler, locking out disabled email addresses from triggering mail dispatches. |
+
+---
+
 ## 📁 Key File Locations
 
 ### Backend
@@ -122,10 +136,13 @@ flowchart TD
 - [auth.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/middleware/auth.js): Multi-layer restaurant resolution for staff JWT tokens.
 - [tenantGuard.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/middleware/tenantGuard.js): Auto-fallback tenant context for authenticated staff.
 - [staffController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/staffController.js): Staff creation with `waiter` role validation.
-- [authController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/authController.js): Staff JWT with `restaurantSlug` in token payload.
+- [authController.js](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/backend/src/controllers/authController.js): Staff JWT with `restaurantSlug` in token payload, active/deactivated validations, and OTP protections.
 
 ### Frontend
-- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Mobile/tablet touch-responsive Waiter POS with table dropdown, floating basket, cart modal.
-- [SellerView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/SellerView.jsx): Seller POS with 8s polling + WebSocket real-time sync.
-- [LoginView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/LoginView.jsx): Centralized staff login with role-based redirection.
+- [WaiterPosView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/WaiterPosView.jsx): Waiter POS with table dropdown, floating basket, cart modal, and order ownership restrictions.
+- [SellerView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/SellerView.jsx): Seller POS with 8s polling + WebSocket real-time sync, and paginated invoice lists.
+- [AdminView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/AdminView.jsx): Centralized admin dashboard with date/number order search and paginated views.
+- [KitchenView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/KitchenView.jsx): Kitchen Display System with paginated preparation lists.
+- [SuperAdminView.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/views/SuperAdminView.jsx): Platforms auditor with paginated trial histories.
+- [TrialAndContact.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/components/Landing/TrialAndContact.jsx): Onboarding section offering support routing instead of automated trial signups.
 - [App.jsx](file:///c:/Users/ALI/OneDrive/Desktop/smart%20ordering%20system/frontend/src/App.jsx): Route guards and authenticated role redirection.

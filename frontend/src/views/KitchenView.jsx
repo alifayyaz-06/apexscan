@@ -252,9 +252,21 @@ export default function KitchenView() {
 
   // Filtered history
   const filteredHistory = historyOrders.filter(o => {
-    const q = historySearch.toLowerCase();
+    const q = historySearch.toLowerCase().trim();
     if (!q) return true;
-    return o.id.toLowerCase().includes(q) || (o.table_name || o.table || '').toString().includes(q);
+
+    const orderNum = String(o.order_number || '').toLowerCase();
+    const shortId = o.id.replace(/^inv-/i, '').toLowerCase();
+    const matchesOrderNumber = orderNum.includes(q) || shortId.includes(q) || o.id.toLowerCase().includes(q);
+
+    const timestamp = o.timestamp || o.created_at;
+    const dateStr = new Date(timestamp).toLocaleDateString().toLowerCase();
+    const dateIso = new Date(timestamp).toISOString().toLowerCase();
+    const dateText = new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateFullText = new Date(timestamp).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const matchesDate = dateStr.includes(q) || dateIso.includes(q) || dateText.includes(q) || dateFullText.includes(q);
+
+    return matchesOrderNumber || matchesDate;
   });
 
   const ENTRIES_PER_PAGE = 10;

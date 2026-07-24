@@ -741,9 +741,21 @@ export default function AdminView() {
   // ╚═══════════════════════════════════════╝
   const filteredOrders = orders.filter(o => {
     const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
-    const q = orderSearch.toLowerCase();
-    const matchesSearch = !q || o.id.toLowerCase().includes(q) || (o.table_name || o.table || '').toString().toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
+    const q = orderSearch.toLowerCase().trim();
+    if (!q) return matchesStatus;
+
+    const orderNum = String(o.order_number || '').toLowerCase();
+    const shortId = o.id.replace(/^inv-/i, '').toLowerCase();
+    const matchesOrderNumber = orderNum.includes(q) || shortId.includes(q) || o.id.toLowerCase().includes(q);
+
+    const timestamp = o.timestamp || o.created_at;
+    const dateStr = new Date(timestamp).toLocaleDateString().toLowerCase();
+    const dateIso = new Date(timestamp).toISOString().toLowerCase();
+    const dateText = new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateFullText = new Date(timestamp).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const matchesDate = dateStr.includes(q) || dateIso.includes(q) || dateText.includes(q) || dateFullText.includes(q);
+
+    return matchesStatus && (matchesOrderNumber || matchesDate);
   });
 
   const ENTRIES_PER_PAGE = 10;
