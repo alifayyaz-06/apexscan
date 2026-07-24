@@ -30,7 +30,7 @@ export default function ForgotPasswordView() {
       const res = await fetch(`${API_URL}/api/v1/auth/admin/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, isInviteSetup })
       });
       const data = await res.json();
       if (!data.success) {

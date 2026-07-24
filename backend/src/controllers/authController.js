@@ -51,7 +51,7 @@ class AuthController {
         return res.status(403).json({ success: false, message: 'Your restaurant account has been deactivated.' });
       }
 
-      if (restaurant && !authUser && !isSuper) {
+      if (restaurant && !restaurant.activated_at && !isSuper) {
         return res.status(403).json({
           success: false,
           code: 'SETUP_REQUIRED',
@@ -536,7 +536,7 @@ class AuthController {
       // Only allow reset for emails that own an active, non-deleted restaurant
       const { data: restaurant, error: dbErr } = await supabase
         .from('restaurants')
-        .select('id, is_active')
+        .select('id, is_active, activated_at, name')
         .ilike('owner_email', normalizedEmail)
         .is('deleted_at', null)
         .maybeSingle();
@@ -551,6 +551,28 @@ class AuthController {
           success: false,
           message: 'This email is not registered or authorized.'
         });
+      }
+
+      // Check for isInviteSetup parameter
+      const { isInviteSetup } = req.body;
+      if (restaurant) {
+        if (isInviteSetup) {
+          // First-time Setup: activated_at must be null
+          if (restaurant.activated_at) {
+            return res.status(400).json({
+              success: false,
+              message: 'This email is already registered. Please log in or use Forgot Password.'
+            });
+          }
+        } else {
+          // Forgot Password: activated_at must not be null
+          if (!restaurant.activated_at) {
+            return res.status(400).json({
+              success: false,
+              message: 'This email has not set up their password yet. Please use the First Time Setup page.'
+            });
+          }
+        }
       }
 
       const otpStore = require('../utils/otpStore');
@@ -642,18 +664,36 @@ class AuthController {
       // Provision schema on first-time login/setup
       const { data: restaurant } = await supabase
         .from('restaurants')
-        .select('slug')
+        .select('id, slug, activated_at, name')
         .ilike('owner_email', normalizedEmail)
         .is('deleted_at', null)
         .maybeSingle();
 
-      if (restaurant && restaurant.slug) {
-        console.log(`[resetPasswordOtp] Provisioning database schema for ${restaurant.slug}`);
-        const { error: schemaErr } = await supabase.rpc('create_tenant_schema', {
-          tenant_slug: restaurant.slug
-        });
-        if (schemaErr) {
-          console.error('[resetPasswordOtp] Error provisioning tenant schema:', schemaErr.message);
+      if (restaurant) {
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+        // Mark as activated/password set
+        await supabase
+          .from('restaurants')
+          .update({
+            activated_at: now.toISOString(),
+            plan: 'trial',
+            subscription_status: 'active',
+            subscription_days: 14,
+            expires_at: expiresAt.toISOString(),
+            is_active: true
+          })
+          .eq('id', restaurant.id);
+
+        if (restaurant.slug) {
+          console.log(`[resetPasswordOtp] Provisioning database schema for ${restaurant.slug}`);
+          const { error: schemaErr } = await supabase.rpc('create_tenant_schema', {
+            tenant_slug: restaurant.slug
+          });
+          if (schemaErr) {
+            console.error('[resetPasswordOtp] Error provisioning tenant schema:', schemaErr.message);
+          }
         }
       }
 

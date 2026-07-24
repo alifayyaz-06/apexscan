@@ -67,7 +67,7 @@ class SuperAdminController {
         owner_email: cleanOwnerEmail,
         plan: plan || 'trial',
         subscription_status: isUnlimited ? 'unlimited' : 'active',
-        activated_at: now.toISOString(),
+        activated_at: null,
         subscription_days: isUnlimited ? null : days,
         expires_at: isUnlimited ? null : new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString()
       };
@@ -86,7 +86,8 @@ class SuperAdminController {
             .insert([{
               name,
               owner_email: cleanOwnerEmail,
-              is_active: true
+              is_active: true,
+              activated_at: null
             }])
             .select()
             .maybeSingle();
