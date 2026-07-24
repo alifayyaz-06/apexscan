@@ -74,6 +74,11 @@ export default function AdminView() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [ordersPage, setOrdersPage] = useState(1);
+
+  useEffect(() => {
+    setOrdersPage(1);
+  }, [orderSearch, orderStatusFilter]);
 
   // ─── Sales State ───
   const [salesData, setSalesData] = useState(null);
@@ -737,9 +742,13 @@ export default function AdminView() {
   const filteredOrders = orders.filter(o => {
     const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
     const q = orderSearch.toLowerCase();
-    const matchesSearch = !q || o.id.toLowerCase().includes(q) || o.table.toString().includes(q);
+    const matchesSearch = !q || o.id.toLowerCase().includes(q) || (o.table_name || o.table || '').toString().toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
+
+  const ENTRIES_PER_PAGE = 10;
+  const totalPages = Math.ceil(filteredOrders.length / ENTRIES_PER_PAGE);
+  const paginatedOrders = filteredOrders.slice((ordersPage - 1) * ENTRIES_PER_PAGE, ordersPage * ENTRIES_PER_PAGE);
 
   const activeCats = Array.from(new Set(menuItems.map(i => i.category).filter(Boolean)));
   const catsToDisplay = activeCats.length > 0 ? activeCats : ['starters', 'mains', 'desserts', 'drinks'];
@@ -1397,7 +1406,7 @@ export default function AdminView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOrders.map((order, idx) => {
+                      {paginatedOrders.map((order, idx) => {
                         const rawType = order.order_type || order.billing?.order_type;
                         const tbl = String(order.table_name || order.table || '').trim();
                         const isTakeaway = rawType === 'takeaway' || tbl.toLowerCase().includes('take away') || tbl.toLowerCase().includes('takeaway');
@@ -1435,6 +1444,60 @@ export default function AdminView() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-between items-center px-5 py-4 border-t border-slate-100 text-xs bg-white text-slate-500">
+                    <div>
+                      Showing <span className="font-semibold text-slate-800">{((ordersPage - 1) * ENTRIES_PER_PAGE) + 1}</span> to{" "}
+                      <span className="font-semibold text-slate-800">{Math.min(ordersPage * ENTRIES_PER_PAGE, filteredOrders.length)}</span> of{" "}
+                      <span className="font-semibold text-slate-800">{filteredOrders.length}</span> entries
+                    </div>
+                    <div className="flex gap-1.5 items-center">
+                      <button
+                        onClick={() => setOrdersPage(p => Math.max(1, p - 1))}
+                        disabled={ordersPage === 1}
+                        className="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 bg-white cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const pageNumbers = [];
+                          const maxVisible = 5;
+                          let start = Math.max(1, ordersPage - 2);
+                          let end = Math.min(totalPages, start + maxVisible - 1);
+                          if (end - start < maxVisible - 1) {
+                            start = Math.max(1, end - maxVisible + 1);
+                          }
+                          for (let i = start; i <= end; i++) {
+                            pageNumbers.push(i);
+                          }
+                          return pageNumbers.map(pageNum => (
+                            <button
+                              key={pageNum}
+                              onClick={() => setOrdersPage(pageNum)}
+                              className={`w-8 h-8 flex items-center justify-center border rounded-xl font-bold transition-colors cursor-pointer ${
+                                ordersPage === pageNum
+                                  ? "bg-[#E63946] text-white border-[#E63946]"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                      <button
+                        onClick={() => setOrdersPage(p => Math.min(totalPages, p + 1))}
+                        disabled={ordersPage === totalPages}
+                        className="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 bg-white cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

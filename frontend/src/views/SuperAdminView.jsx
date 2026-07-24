@@ -50,6 +50,11 @@ export default function SuperAdminView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'trial-active' | 'trial-expired' | 'paid' | 'suspended'
   const [historySearch, setHistorySearch] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historySearch]);
 
   // Modals state
   const [showModal, setShowModal] = useState(false);
@@ -327,6 +332,10 @@ export default function SuperAdminView() {
     return h.email.toLowerCase().includes(q) || h.restaurant_name.toLowerCase().includes(q);
   });
 
+  const ENTRIES_PER_PAGE = 10;
+  const totalPages = Math.ceil(filteredHistory.length / ENTRIES_PER_PAGE);
+  const paginatedHistory = filteredHistory.slice((historyPage - 1) * ENTRIES_PER_PAGE, historyPage * ENTRIES_PER_PAGE);
+
   return (
     <div className="min-h-screen bg-[#F9F9F9] text-[#2B2D42] font-sans">
       {/* Header */}
@@ -557,12 +566,12 @@ export default function SuperAdminView() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredHistory.length === 0 ? (
+                      {paginatedHistory.length === 0 ? (
                         <tr>
                           <td colSpan="6" className="px-6 py-10 text-center text-slate-400 italic">No trial claims recorded.</td>
                         </tr>
                       ) : (
-                        filteredHistory.map(h => (
+                        paginatedHistory.map(h => (
                           <tr key={h.id} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4 font-semibold text-xs text-[#2B2D42]">{h.email}</td>
                             <td className="px-6 py-4 font-bold text-xs">{h.restaurant_name}</td>
@@ -590,6 +599,59 @@ export default function SuperAdminView() {
                     </tbody>
                   </table>
                 </div>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-between items-center px-6 py-4 border-t border-slate-100 text-xs">
+                    <div className="text-slate-400">
+                      Showing <span className="font-semibold text-[#2B2D42]">{((historyPage - 1) * ENTRIES_PER_PAGE) + 1}</span> to{" "}
+                      <span className="font-semibold text-[#2B2D42]">{Math.min(historyPage * ENTRIES_PER_PAGE, filteredHistory.length)}</span> of{" "}
+                      <span className="font-semibold text-[#2B2D42]">{filteredHistory.length}</span> entries
+                    </div>
+                    <div className="flex gap-1.5 items-center">
+                      <button
+                        onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                        disabled={historyPage === 1}
+                        className="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 bg-white"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const pageNumbers = [];
+                          const maxVisible = 5;
+                          let start = Math.max(1, historyPage - 2);
+                          let end = Math.min(totalPages, start + maxVisible - 1);
+                          if (end - start < maxVisible - 1) {
+                            start = Math.max(1, end - maxVisible + 1);
+                          }
+                          for (let i = start; i <= end; i++) {
+                            pageNumbers.push(i);
+                          }
+                          return pageNumbers.map(pageNum => (
+                            <button
+                              key={pageNum}
+                              onClick={() => setHistoryPage(pageNum)}
+                              className={`w-8 h-8 flex items-center justify-center border rounded-xl font-bold transition-colors ${
+                                historyPage === pageNum
+                                  ? "bg-[#E63946] text-white border-[#E63946]"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                      <button
+                        onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))}
+                        disabled={historyPage === totalPages}
+                        className="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 bg-white"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>

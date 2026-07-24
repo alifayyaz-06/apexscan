@@ -18,6 +18,11 @@ export default function SellerView() {
   const [historyOrders, setHistoryOrders] = useState([]);
   const [menuItemsList, setMenuItemsList] = useState([]);
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [searchHistoryQuery]);
   
   // Manual order & filter state
   const [isManualOrderOpen, setIsManualOrderOpen] = useState(false);
@@ -1017,8 +1022,12 @@ export default function SellerView() {
 
   const filteredHistory = historyOrders.filter(o => {
     const term = searchHistoryQuery.toLowerCase();
-    return o.id.toLowerCase().includes(term) || o.table.toLowerCase().includes(term);
+    return o.id.toLowerCase().includes(term) || (o.table || '').toString().toLowerCase().includes(term);
   }).filter(o => o.status === 'completed' || o.status === 'cancelled');
+
+  const ENTRIES_PER_PAGE = 10;
+  const totalPages = Math.ceil(filteredHistory.length / ENTRIES_PER_PAGE);
+  const paginatedHistory = filteredHistory.slice((historyPage - 1) * ENTRIES_PER_PAGE, historyPage * ENTRIES_PER_PAGE);
 
   const filteredMenuItems = menuItemsList.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(manualSearchQuery.toLowerCase());
@@ -2135,12 +2144,12 @@ export default function SellerView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {filteredHistory.length === 0 ? (
+                  {paginatedHistory.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="px-5 py-8 text-center text-zinc-500 italic border-b border-zinc-100">No historical orders found.</td>
                     </tr>
                   ) : (
-                    filteredHistory.map(order => (
+                    paginatedHistory.map(order => (
                       <tr key={order.id} className="bg-white hover:bg-zinc-50 transition-colors">
                         <td className="px-5 py-3.5 font-bold font-mono text-black border-b border-zinc-100">
                           {formatOrderId(order)}
@@ -2180,7 +2189,7 @@ export default function SellerView() {
                         <td className="px-5 py-3.5 text-center border-b border-zinc-100">
                           <button
                             onClick={() => openBillingModal(order, true)}
-                            className="px-3 py-1.5 bg-white text-black hover:bg-zinc-50 text-xs font-bold border border-zinc-200 rounded-lg transition-colors"
+                            className="px-3 py-1.5 bg-white text-black hover:bg-zinc-50 text-xs font-bold border border-zinc-200 rounded-lg transition-colors cursor-pointer"
                           >
                             Receipt
                           </button>
@@ -2191,6 +2200,60 @@ export default function SellerView() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center mt-5 pt-5 border-t border-zinc-100 text-xs">
+                <div className="text-zinc-500">
+                  Showing <span className="font-semibold text-zinc-800">{((historyPage - 1) * ENTRIES_PER_PAGE) + 1}</span> to{" "}
+                  <span className="font-semibold text-zinc-800">{Math.min(historyPage * ENTRIES_PER_PAGE, filteredHistory.length)}</span> of{" "}
+                  <span className="font-semibold text-zinc-800">{filteredHistory.length}</span> entries
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                    disabled={historyPage === 1}
+                    className="px-3 py-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-zinc-800 bg-white cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const pageNumbers = [];
+                      const maxVisible = 5;
+                      let start = Math.max(1, historyPage - 2);
+                      let end = Math.min(totalPages, start + maxVisible - 1);
+                      if (end - start < maxVisible - 1) {
+                        start = Math.max(1, end - maxVisible + 1);
+                      }
+                      for (let i = start; i <= end; i++) {
+                        pageNumbers.push(i);
+                      }
+                      return pageNumbers.map(pageNum => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setHistoryPage(pageNum)}
+                          className={`w-8 h-8 flex items-center justify-center border rounded-lg font-bold transition-colors cursor-pointer ${
+                            historyPage === pageNum
+                              ? "bg-black text-white border-black"
+                              : "bg-white text-zinc-800 border-zinc-200 hover:bg-zinc-50"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                  <button
+                    onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))}
+                    disabled={historyPage === totalPages}
+                    className="px-3 py-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-zinc-800 bg-white cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
