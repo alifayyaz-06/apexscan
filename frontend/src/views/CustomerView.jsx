@@ -225,12 +225,18 @@ export default function CustomerView() {
             localStorage.setItem("ordering_table", result.data.tableNumber);
           }
           if (result.data.isOccupiedMismatch) {
-            setIsTableOccupiedByOthers(true);
-            setOccupiedOrderDetails({
-              activeOrderId: result.data.activeOrderId,
-              orderNumber: result.data.orderNumber,
-              status: result.data.status
-            });
+            const savedOrderId = localStorage.getItem(`active_order_table_${result.data.tableNumber}`);
+            if (savedOrderId && savedOrderId === result.data.activeOrderId) {
+              setIsTableOccupiedByOthers(false);
+              setOccupiedOrderDetails(null);
+            } else {
+              setIsTableOccupiedByOthers(true);
+              setOccupiedOrderDetails({
+                activeOrderId: result.data.activeOrderId,
+                orderNumber: result.data.orderNumber,
+                status: result.data.status
+              });
+            }
           } else {
             setIsTableOccupiedByOthers(false);
             setOccupiedOrderDetails(null);
@@ -312,60 +318,69 @@ export default function CustomerView() {
 
   // Detect table and initialize session
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlQrToken = urlParams.get("t");
-    const urlTable = urlParams.get("table");
+    const handleUrlCheck = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlQrToken = urlParams.get("t");
+      const urlTable = urlParams.get("table");
 
-    const pathMatch = window.location.pathname.match(/^\/r\/([^/]+)/);
-    const pathSlug = pathMatch ? pathMatch[1] : null;
+      const pathMatch = window.location.pathname.match(/^\/r\/([^/]+)/);
+      const pathSlug = pathMatch ? pathMatch[1] : null;
 
-    let restId = pathSlug || urlParams.get("restaurant");
-    if (!restId) {
-      restId = localStorage.getItem("ordering_restaurant");
-    }
+      let restId = pathSlug || urlParams.get("restaurant");
+      if (!restId) {
+        restId = localStorage.getItem("ordering_restaurant");
+      }
 
-    if (restId) {
-      setRestaurantId(restId);
-      localStorage.setItem("ordering_restaurant", restId);
-      realTimeSync.registerRestaurant(restId, 'customer');
-    }
+      if (restId) {
+        setRestaurantId(restId);
+        localStorage.setItem("ordering_restaurant", restId);
+        realTimeSync.registerRestaurant(restId, 'customer');
+      }
 
-    const codeOrToken = urlQrToken || urlTable;
+      const codeOrToken = urlQrToken || urlTable;
 
-    if (codeOrToken) {
-      setQrToken(codeOrToken);
-      const secureToken = urlQrToken || urlTable;
-      const tableNumber = urlQrToken ? urlTable : null;
+      if (codeOrToken) {
+        setQrToken(codeOrToken);
+        const secureToken = urlQrToken || urlTable;
+        const tableNumber = urlQrToken ? urlTable : null;
 
-      verifyQrTokenOnServer(secureToken, tableNumber, restId).then((data) => {
-        if (data && data.tableNumber) {
-          if (!data.isOccupiedMismatch) {
-            checkTableOccupiedStatus(data.tableNumber, restId);
-            const savedOrderId = localStorage.getItem(`active_order_table_${data.tableNumber}`);
-            if (savedOrderId) {
-              setActiveOrderId(savedOrderId);
-              fetchOrderDetails(savedOrderId, restId);
+        verifyQrTokenOnServer(secureToken, tableNumber, restId).then((data) => {
+          if (data && data.tableNumber) {
+            if (!data.isOccupiedMismatch) {
+              checkTableOccupiedStatus(data.tableNumber, restId);
+              const savedOrderId = localStorage.getItem(`active_order_table_${data.tableNumber}`);
+              if (savedOrderId) {
+                setActiveOrderId(savedOrderId);
+                fetchOrderDetails(savedOrderId, restId);
+              }
             }
           }
-        }
-      });
-    } else {
-      const savedSession = sessionStorage.getItem("verified_qr_session");
-      const savedTable = localStorage.getItem("ordering_table");
-
-      if (savedSession && savedTable) {
-        setSessionId(savedSession);
-        setCurrentTable(savedTable);
-        checkTableOccupiedStatus(savedTable, restId);
-        const savedOrderId = localStorage.getItem(`active_order_table_${savedTable}`);
-        if (savedOrderId) {
-          setActiveOrderId(savedOrderId);
-          fetchOrderDetails(savedOrderId, restId);
-        }
+        });
       } else {
-        setShowDemoTableOverlay(true);
+        const savedSession = sessionStorage.getItem("verified_qr_session");
+        const savedTable = localStorage.getItem("ordering_table");
+
+        if (savedSession && savedTable) {
+          setSessionId(savedSession);
+          setCurrentTable(savedTable);
+          checkTableOccupiedStatus(savedTable, restId);
+          const savedOrderId = localStorage.getItem(`active_order_table_${savedTable}`);
+          if (savedOrderId) {
+            setActiveOrderId(savedOrderId);
+            fetchOrderDetails(savedOrderId, restId);
+          }
+        } else {
+          setShowDemoTableOverlay(true);
+        }
       }
-    }
+    };
+
+    handleUrlCheck();
+    window.addEventListener('popstate', handleUrlCheck);
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlCheck);
+    };
   }, []);
 
   // Fetch restaurant details & menu & register socket

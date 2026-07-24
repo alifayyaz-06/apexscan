@@ -18,6 +18,19 @@ function generateRandomCode(length = 6) {
 }
 
 class TableCodeManager {
+  static getDeterministicFallback(restaurantSlug, tableNumber) {
+    const slug = (restaurantSlug || 'default').toLowerCase();
+    const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let seed = 0;
+    const str = `${slug}_tbl_${tableNumber}`;
+    for (let i = 0; i < str.length; i++) seed += str.charCodeAt(i);
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += CHARS[(seed * (i + 7) + 13 * (i + 1)) % CHARS.length];
+    }
+    return code;
+  }
+
   /**
    * Get or create a random table code for a restaurant & table number
    */
@@ -30,11 +43,8 @@ class TableCodeManager {
       return codeRegistry.get(key);
     }
 
-    // Generate fresh random 6-char alphanumeric code (e.g. X9QK72)
-    let code;
-    do {
-      code = generateRandomCode(6);
-    } while (codeRegistry.has(`${slug}:${code}`));
+    // Default to the deterministic code!
+    const code = this.getDeterministicFallback(slug, tbl);
 
     codeRegistry.set(key, code);
     codeRegistry.set(`${slug}:${code}`, tbl);
@@ -50,8 +60,8 @@ class TableCodeManager {
     const slug = (restaurantSlug || 'default').toLowerCase();
     const cleanCode = String(code).trim().toUpperCase();
 
-    // Ensure initial registry populated for tables 1..50
-    for (let i = 1; i <= 50; i++) {
+    // Ensure initial registry populated for tables 1..100
+    for (let i = 1; i <= 100; i++) {
       this.getTableCode(slug, i);
     }
 
@@ -74,6 +84,21 @@ class TableCodeManager {
         tableCode: actualCode,
         restaurantSlug: slug
       };
+    }
+
+    // 3. Fallback: Check if cleanCode matches deterministic code for any table 1..100
+    for (let i = 1; i <= 100; i++) {
+      const fallbackCode = this.getDeterministicFallback(slug, i);
+      if (fallbackCode === cleanCode) {
+        const key = `${slug}:${i}`;
+        codeRegistry.set(key, cleanCode);
+        codeRegistry.set(`${slug}:${cleanCode}`, String(i));
+        return {
+          tableNumber: String(i),
+          tableCode: cleanCode,
+          restaurantSlug: slug
+        };
+      }
     }
 
     return null;
