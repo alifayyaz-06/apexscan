@@ -52,23 +52,10 @@ class AuthController {
       }
 
       if (restaurant && !authUser && !isSuper) {
-        const otpStore = require('../utils/otpStore');
-        const { sendOtp } = require('../utils/mailer');
-
-        const otp = otpStore.generate();
-        otpStore.set(email, otp);
-
-        console.log(`[adminLogin] First-time setup. Sending OTP ${otp} to ${email}`);
-        try {
-          await sendOtp(email, otp);
-        } catch (mailErr) {
-          console.error(`[adminLogin] First-time setup mail sending failed but proceeding:`, mailErr.message);
-        }
-
-        return res.status(200).json({
+        return res.status(403).json({
           success: false,
-          code: 'FIRST_TIME_SETUP',
-          message: 'First-time login setup required. A verification code has been sent to your Gmail to set your password.'
+          code: 'SETUP_REQUIRED',
+          message: 'Account setup required. Please click "Forgot Password" to set up your password for the first time.'
         });
       }
 
