@@ -51,7 +51,7 @@ class AuthController {
         return res.status(403).json({ success: false, message: 'Your restaurant account has been deactivated.' });
       }
 
-      if (restaurant && !restaurant.activated_at && !isSuper) {
+      if (restaurant && !authUser && !isSuper) {
         return res.status(403).json({
           success: false,
           code: 'SETUP_REQUIRED',
@@ -553,25 +553,38 @@ class AuthController {
         });
       }
 
+      // Check if user exists in Supabase Auth
+      let authUser = null;
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        const adminClient = createClient(envs.supabaseUrl, envs.supabaseServiceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false }
+        });
+        const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
+        if (!listErr && users) {
+          authUser = users.find(u => u.email?.toLowerCase() === normalizedEmail);
+        }
+      } catch (err) {
+        console.error('[forgotPassword] Auth account check failed:', err.message);
+      }
+
       // Check for isInviteSetup parameter
       const { isInviteSetup } = req.body;
-      if (restaurant) {
-        if (isInviteSetup) {
-          // First-time Setup: activated_at must be null
-          if (restaurant.activated_at) {
-            return res.status(400).json({
-              success: false,
-              message: 'This email is already registered. Please log in or use Forgot Password.'
-            });
-          }
-        } else {
-          // Forgot Password: activated_at must not be null
-          if (!restaurant.activated_at) {
-            return res.status(400).json({
-              success: false,
-              message: 'This email has not set up their password yet. Please use the First Time Setup page.'
-            });
-          }
+      if (isInviteSetup) {
+        // First-time Setup: authUser must be null
+        if (authUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'This email is already registered. Please log in or use Forgot Password.'
+          });
+        }
+      } else {
+        // Forgot Password: authUser must not be null
+        if (!authUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'This email has not set up their password yet. Please use the First Time Setup page.'
+          });
         }
       }
 
