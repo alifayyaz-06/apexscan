@@ -402,7 +402,7 @@ export default function LoginView() {
 
                 <div className="text-center mt-2 border-t border-slate-100 pt-4">
                   <a
-                    href={currentSlug ? `/r/${currentSlug}/forgot-password` : '/forgot-password'}
+                    href={currentSlug ? `/r/${currentSlug}/invite-setup` : '/invite-setup'}
                     className="text-xs text-[#E63946] hover:text-[#FF6B35] font-bold transition-colors"
                   >
                     First time? Click here to set your invited password

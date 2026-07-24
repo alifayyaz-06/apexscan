@@ -19,6 +19,9 @@ export default function ForgotPasswordView() {
   const currentSlug = pathMatch ? pathMatch[1] : null;
   const loginPath = currentSlug ? `/r/${currentSlug}/login` : '/login';
 
+  // Detect invitation flow automatically from window location path
+  const isInviteSetup = window.location.pathname.includes('invite-setup');
+
   const handleSendCode = async (e) => {
     e.preventDefault();
     setError('');
@@ -81,8 +84,12 @@ export default function ForgotPasswordView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#2B2D42] mb-2">Password Reset Successful</h3>
-            <p className="text-slate-500 text-sm mb-6">You can now log in with your new password.</p>
+            <h3 className="text-lg font-semibold text-[#2B2D42] mb-2">
+              {isInviteSetup ? 'Account Activation Successful' : 'Password Reset Successful'}
+            </h3>
+            <p className="text-slate-500 text-sm mb-6">
+              {isInviteSetup ? 'Your restaurant dashboard password has been configured.' : 'You can now log in with your new password.'}
+            </p>
             <a href={loginPath} className="inline-block px-6 py-2.5 bg-[#E63946] text-white font-semibold rounded-lg hover:bg-[#d32f3c] transition-colors">
               Go to Login
             </a>
@@ -96,10 +103,12 @@ export default function ForgotPasswordView() {
     <div className="min-h-screen bg-[#F9F9F9] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-black text-[#2B2D42] mb-2">Reset Password</h1>
+          <h1 className="text-2xl font-black text-[#2B2D42] mb-2">
+            {isInviteSetup ? 'Onboard & Setup Password' : 'Reset Password'}
+          </h1>
           <p className="text-slate-400 text-sm">
-            {step === 1 && 'Enter your email to receive a verification code'}
-            {step === 2 && 'Enter the 6-digit code sent to your email and set a new password'}
+            {step === 1 && (isInviteSetup ? 'Enter your registered Gmail below to set up your password' : 'Enter your email to receive a verification code')}
+            {step === 2 && (isInviteSetup ? 'Enter the 6-digit code sent to your Gmail and choose your password' : 'Enter the 6-digit code sent to your email and set a new password')}
           </p>
         </div>
 
@@ -128,7 +137,7 @@ export default function ForgotPasswordView() {
                 disabled={loading}
                 className="w-full py-2.5 bg-[#E63946] text-white font-semibold rounded-lg hover:bg-[#d32f3c] transition-colors disabled:opacity-50"
               >
-                {loading ? 'Sending...' : 'Send Verification Code'}
+                {loading ? 'Sending...' : (isInviteSetup ? 'Send Setup Verification Code' : 'Send Verification Code')}
               </button>
               <div className="text-center">
                 <a href={loginPath} className="text-slate-400 text-sm hover:text-slate-600">Back to login</a>
@@ -152,7 +161,7 @@ export default function ForgotPasswordView() {
                 <p className="text-xs text-slate-400 mt-1">Check your inbox for the 6-digit code</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">New Password</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">Choose Password</label>
                 <input
                   type="password"
                   value={password}
@@ -180,7 +189,7 @@ export default function ForgotPasswordView() {
                 disabled={loading || otp.length !== 6}
                 className="w-full py-2.5 bg-[#E63946] text-white font-semibold rounded-lg hover:bg-[#d32f3c] transition-colors disabled:opacity-50"
               >
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {loading ? (isInviteSetup ? 'Configuring...' : 'Resetting...') : (isInviteSetup ? 'Configure Password' : 'Reset Password')}
               </button>
               <div className="flex justify-between">
                 <button type="button" onClick={() => { setStep(1); setError(''); }} className="text-slate-400 text-sm hover:text-slate-600">

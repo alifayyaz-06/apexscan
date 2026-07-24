@@ -55,7 +55,7 @@ class AuthController {
         return res.status(403).json({
           success: false,
           code: 'SETUP_REQUIRED',
-          message: 'Account setup required. Please click "Forgot Password" to set up your password for the first time.'
+          message: 'Account setup required. Please click "First time? Click here to set your invited password" below.'
         });
       }
 

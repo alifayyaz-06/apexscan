@@ -107,7 +107,7 @@ function AppContent() {
   }
 
   // 3a. Password reset pages (public)
-  if (subpath === '/forgot-password') {
+  if (subpath === '/forgot-password' || subpath === '/invite-setup') {
     return <ForgotPasswordView />;
   }
   if (subpath === '/update-password') {
