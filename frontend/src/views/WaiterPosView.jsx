@@ -371,9 +371,13 @@ export default function WaiterPosView() {
 
   const currentTableOrder = tableOrdersMap[String(selectedTable)];
   const currentWaiterUserId = user?.id || user?.staffId;
+  const currentWaiterName = user?.displayName || user?.employeeCode || 'Waiter';
+  const orderWaiterName = currentTableOrder?.billing?.waiterName || currentTableOrder?.billing?.waiter_name || currentTableOrder?.waiterName || currentTableOrder?.waiter_name;
+
   const isOrderOwner = !currentTableOrder || 
     (currentTableOrder.billing?.waiter_id && String(currentTableOrder.billing.waiter_id) === String(currentWaiterUserId)) || 
-    (currentTableOrder.waiter_id && String(currentTableOrder.waiter_id) === String(currentWaiterUserId));
+    (currentTableOrder.waiter_id && String(currentTableOrder.waiter_id) === String(currentWaiterUserId)) ||
+    (orderWaiterName && currentWaiterName && orderWaiterName.trim().toLowerCase() === currentWaiterName.trim().toLowerCase());
 
   // Submit NEW order or ADD items to existing order
   const handleSubmitWaiterOrder = async () => {

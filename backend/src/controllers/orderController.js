@@ -328,7 +328,24 @@ class OrderController {
       if (req.user && req.user.role === 'waiter') {
         const orderWaiterId = order.billing?.waiter_id || order.waiter_id;
         const currentWaiterId = req.user.id || req.user.staffId;
-        if (!orderWaiterId || String(orderWaiterId) !== String(currentWaiterId)) {
+
+        const orderWaiterName = order.billing?.waiterName || order.billing?.waiter_name || order.waiterName || order.waiter_name;
+        const currentWaiterName = req.user.displayName || req.user.name;
+
+        let isOwner = false;
+
+        // Verify by ID
+        if (orderWaiterId && currentWaiterId && String(orderWaiterId) === String(currentWaiterId)) {
+          isOwner = true;
+        }
+
+        // Verify by Name (case-insensitive, trimmed)
+        if (orderWaiterName && currentWaiterName &&
+            orderWaiterName.trim().toLowerCase() === currentWaiterName.trim().toLowerCase()) {
+          isOwner = true;
+        }
+
+        if (!isOwner) {
           return res.status(403).json({ success: false, message: 'Forbidden. You are only authorized to edit orders that you punched.' });
         }
       }
