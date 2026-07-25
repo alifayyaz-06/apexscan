@@ -15,11 +15,16 @@ class RestaurantController {
 
       const { data, error } = await supabase
         .from('restaurants')
-        .select('name, slug, logo_url, phone, address, email, tax_rate, service_charge')
+        .select('name, slug, logo_url, phone, address, email, tax_rate, service_charge, kitchen_mode')
         .eq('slug', slug)
         .is('deleted_at', null)
         .eq('is_active', true)
         .maybeSingle();
+
+      if (data) {
+        // Enforce backward compatibility default if database column has not been updated
+        data.kitchen_mode = data.kitchen_mode || 'display';
+      }
 
       if (error) throw error;
       if (!data) {
@@ -52,6 +57,9 @@ class RestaurantController {
 
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
+      if (data) {
+        data.kitchen_mode = data.kitchen_mode || 'display';
+      }
       return res.status(200).json({ success: true, data: data || {} });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
@@ -69,7 +77,7 @@ class RestaurantController {
         return res.status(400).json({ success: false, message: 'Restaurant context not found.' });
       }
 
-      const { name, logo_url, phone, address, email, tax_rate, service_charge } = req.body;
+      const { name, logo_url, phone, address, email, tax_rate, service_charge, kitchen_mode } = req.body;
 
       const updateData = {};
       if (name !== undefined) updateData.name = name;
@@ -79,6 +87,7 @@ class RestaurantController {
       if (email !== undefined) updateData.email = email;
       if (tax_rate !== undefined) updateData.tax_rate = parseFloat(tax_rate);
       if (service_charge !== undefined) updateData.service_charge = parseFloat(service_charge);
+      if (kitchen_mode !== undefined) updateData.kitchen_mode = kitchen_mode;
 
       const { data, error } = await supabase
         .from('restaurants')

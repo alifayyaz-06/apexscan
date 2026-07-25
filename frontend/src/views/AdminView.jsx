@@ -102,6 +102,7 @@ export default function AdminView() {
   const [settingsEmail, setSettingsEmail] = useState('');
   const [settingsTax, setSettingsTax] = useState(8.00);
   const [settingsServiceCharge, setSettingsServiceCharge] = useState(5.00);
+  const [settingsKitchenMode, setSettingsKitchenMode] = useState('display');
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -242,6 +243,7 @@ export default function AdminView() {
         setSettingsEmail(result.data.email || '');
         setSettingsTax(result.data.tax_rate !== undefined ? result.data.tax_rate : 8.00);
         setSettingsServiceCharge(result.data.service_charge !== undefined ? result.data.service_charge : 5.00);
+        setSettingsKitchenMode(result.data.kitchen_mode || 'display');
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -266,7 +268,8 @@ export default function AdminView() {
           address: settingsAddress,
           email: settingsEmail,
           tax_rate: parseFloat(settingsTax) || 0,
-          service_charge: parseFloat(settingsServiceCharge) || 0
+          service_charge: parseFloat(settingsServiceCharge) || 0,
+          kitchen_mode: settingsKitchenMode
         })
       });
       const result = await res.json();
@@ -1101,12 +1104,16 @@ export default function AdminView() {
                 {/* 8. Kitchen Pending Orders */}
                 <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kitchen Queue</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      {settingsKitchenMode === 'printer_only' ? 'Active Orders' : 'Kitchen Queue'}
+                    </span>
                     <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
                   </div>
                   <div className="mt-4">
                     <span className="text-3xl font-black text-[#2B2D42]">{metrics.kitchenPendingCount}</span>
-                    <span className="text-xs text-slate-400 block mt-1">Orders in pending/prep queue</span>
+                    <span className="text-xs text-slate-400 block mt-1">
+                      {settingsKitchenMode === 'printer_only' ? 'Orders currently active' : 'Orders in pending/prep queue'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1986,6 +1993,21 @@ export default function AdminView() {
                       />
                       <p className="text-[10px] text-slate-400 mt-1">Configure default gratuity/service fees applied to dining checks.</p>
                     </div>
+                  </div>
+
+                  <div className="mt-6 border-t border-slate-100 pt-5">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Kitchen Management Mode</label>
+                    <select
+                      value={settingsKitchenMode}
+                      onChange={(e) => setSettingsKitchenMode(e.target.value)}
+                      className="w-full py-2.5 px-4 bg-white border border-slate-200 rounded-xl text-sm text-[#2B2D42] focus:border-[#E63946] outline-none transition-colors"
+                    >
+                      <option value="display">Kitchen Display Screen (KDS)</option>
+                      <option value="printer_only">Printer Only Mode</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Choose whether orders go to an interactive kitchen tablet display screen or print directly to a kitchen ticket printer.
+                    </p>
                   </div>
                 </div>
 

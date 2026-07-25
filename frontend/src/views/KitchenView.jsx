@@ -137,12 +137,35 @@ export default function KitchenView() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyPage, setHistoryPage] = useState(1);
 
+  const [kitchenMode, setKitchenMode] = useState('display');
+  const [loadingMode, setLoadingMode] = useState(true);
+
+  useEffect(() => {
+    const slug = user?.restaurantSlug || localStorage.getItem('ordering_restaurant');
+    if (!slug) {
+      setLoadingMode(false);
+      return;
+    }
+    fetch(`${BACKEND_URL}/api/v1/restaurants/public/${slug}`)
+      .then(res => res.json())
+      .then(result => {
+        if (result.success && result.data) {
+          setKitchenMode(result.data.kitchen_mode || 'display');
+        }
+        setLoadingMode(false);
+      })
+      .catch(err => {
+        console.error('Error fetching kitchen mode in KitchenView:', err);
+        setLoadingMode(false);
+      });
+  }, [user]);
+
   useEffect(() => {
     setHistoryPage(1);
   }, [historySearch]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || kitchenMode === 'printer_only') return;
     if (user?.restaurantSlug) {
       realTimeSync.registerRestaurant(user.restaurantSlug, user.role);
     } else if (user?.restaurantId) {
@@ -277,6 +300,37 @@ export default function KitchenView() {
   const backlog = orders.filter(o => o.status === 'confirmed');
   const preparing = orders.filter(o => o.status === 'cooking');
   const ready = orders.filter(o => o.status === 'ready');
+
+  if (loadingMode) {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+        <span className="text-zinc-500 font-medium">Checking kitchen status...</span>
+      </div>
+    );
+  }
+
+  if (kitchenMode === 'printer_only') {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-5">
+        <div className="bg-white border border-zinc-200 p-8 rounded-3xl shadow-sm text-center max-w-md w-full">
+          <div className="text-4xl mb-4">🖨️</div>
+          <h2 className="text-xl font-bold text-zinc-900 mb-2">Kitchen Display Screen (KDS) Disabled</h2>
+          <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+            This restaurant operates in Printer-Only Mode. Kitchen Display Screen dashboard is disabled.
+          </p>
+          <button
+            onClick={() => {
+              logout();
+              window.location.href = '/login';
+            }}
+            className="w-full py-3 bg-black hover:bg-zinc-800 text-white font-bold rounded-xl transition-colors text-sm"
+          >
+            Log Out & Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6">

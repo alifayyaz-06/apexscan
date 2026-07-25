@@ -84,6 +84,10 @@ async function authenticate(req, res, next) {
           return res.status(401).json({ success: false, message: 'Staff credentials invalid or shift ended.' });
         }
 
+        if (staffMember.role === 'kitchen_staff' && restaurant.kitchen_mode === 'printer_only') {
+          return res.status(403).json({ success: false, message: 'Kitchen Display login is disabled under Printer-Only Mode.' });
+        }
+
         req.user = {
           id: staffMember.id,
           restaurantId: restaurant.id,

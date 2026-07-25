@@ -387,6 +387,10 @@ class AuthController {
         return res.status(401).json({ success: false, message: 'Invalid employee code or password.' });
       }
 
+      if (staffMember.role === 'kitchen_staff' && restaurant.kitchen_mode === 'printer_only') {
+        return res.status(403).json({ success: false, message: 'This restaurant operates in Printer-Only Mode. Kitchen Display login is disabled.' });
+      }
+
       // Verify password
       const validPassword = await bcrypt.compare(password, staffMember.password_hash);
       if (!validPassword) {

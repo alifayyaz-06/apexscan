@@ -621,6 +621,11 @@ export default function SellerView() {
           printReceipt(createdOrder, 'customer');
         }
 
+        // Auto print KOT in printer_only mode for manual order
+        if (settings?.kitchen_mode === 'printer_only') {
+          printReceipt(createdOrder, 'kot');
+        }
+
         if (manualOrderType === 'delivery') {
           toast.success('Delivery order created successfully!');
         } else {
@@ -705,7 +710,16 @@ export default function SellerView() {
       });
       const result = await res.json();
       if (result.success) {
-        toast.success('Order confirmed and sent to kitchen.');
+        toast.success(settings?.kitchen_mode === 'printer_only' ? 'Order confirmed and printed in kitchen.' : 'Order confirmed and sent to kitchen.');
+        
+        // Auto print KOT in printer_only mode
+        if (settings?.kitchen_mode === 'printer_only') {
+          const confirmedOrder = liveOrders.find(o => o.id === orderId);
+          if (confirmedOrder) {
+            printReceipt(confirmedOrder, 'kot');
+          }
+        }
+
         loadLiveOrders();
       } else {
         toast.error(result.message || 'Failed to confirm order.');
@@ -751,6 +765,29 @@ export default function SellerView() {
       if (result.success) loadLiveOrders();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus, toastMsg) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...authHeaders()
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const result = await res.json();
+      if (result.success) {
+        if (toastMsg) toast.success(toastMsg);
+        loadLiveOrders();
+      } else {
+        toast.error(result.message || 'Failed to update order status.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error. Failed to update order status.');
     }
   };
 
@@ -1910,18 +1947,42 @@ export default function SellerView() {
                           <div className="text-[10px] text-zinc-500 -mt-2">Sales Rep: {order.billing.confirmedBy}</div>
                         )}
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => openEditModal(order)}
-                            className="flex-1 py-2 bg-white text-black border border-zinc-200 hover:bg-zinc-50 font-bold text-xs rounded-xl transition-colors"
-                          >
-                            Edit Items
-                          </button>
-                          <button
-                            onClick={() => handleCancelOrder(order.id)}
-                            className="flex-1 py-2 bg-white text-black border border-zinc-200 hover:bg-zinc-50 font-bold text-xs rounded-xl transition-colors"
-                          >
-                            Cancel Order
-                          </button>
+                        <div className="flex flex-col gap-2">
+                          {settings?.kitchen_mode === 'printer_only' && (
+                            <div className="flex gap-2">
+                              {order.status === 'confirmed' && (
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(order.id, 'cooking', 'Order marked as preparing.')}
+                                  className="flex-1 py-2 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-colors"
+                                >
+                                  Mark Preparing
+                                </button>
+                              )}
+                              {order.status === 'cooking' && (
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(order.id, 'ready', 'Order marked as ready to serve.')}
+                                  className="flex-1 py-2 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-colors"
+                                >
+                                  Mark Ready
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEditModal(order)}
+                              className="flex-1 py-2 bg-white text-black border border-zinc-200 hover:bg-zinc-50 font-bold text-xs rounded-xl transition-colors"
+                            >
+                              Edit Items
+                            </button>
+                            <button
+                              onClick={() => handleCancelOrder(order.id)}
+                              className="flex-1 py-2 bg-white text-black border border-zinc-200 hover:bg-zinc-50 font-bold text-xs rounded-xl transition-colors"
+                            >
+                              Cancel Order
+                            </button>
+                          </div>
+                        </div>
                         </div>
                       </div>
                     </div>

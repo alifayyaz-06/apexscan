@@ -7,7 +7,8 @@ const updateSettingsSchema = z.object({
   address: z.string().max(500).optional(),
   email: z.string().email().or(z.literal('')).optional(),
   tax_rate: z.number().min(0).max(100).optional(),
-  service_charge: z.number().min(0).max(100).optional()
+  service_charge: z.number().min(0).max(100).optional(),
+  kitchen_mode: z.enum(['display', 'printer_only']).optional()
 }).refine(data => Object.keys(data).length > 0, {
   message: 'At least one setting must be provided'
 });
