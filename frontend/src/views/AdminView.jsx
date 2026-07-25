@@ -1005,205 +1005,288 @@ export default function AdminView() {
           const chartData = salesData?.charts?.[dashboardChartTab] || [];
           const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
 
+          const paymentSummary = (() => {
+            let cashTotal = 0;
+            let cardTotal = 0;
+            let unpaidTotal = 0;
+
+            const todayStr = new Date().toDateString();
+            const todayOrders = orders.filter(o => 
+              o.status === 'completed' && 
+              new Date(o.timestamp).toDateString() === todayStr
+            );
+
+            todayOrders.forEach(o => {
+              const method = String(o.billing?.paymentMethod || 'cash').toLowerCase();
+              const amount = o.billing?.total || 0;
+              if (method === 'card') {
+                cardTotal += amount;
+              } else if (method === 'cash') {
+                cashTotal += amount;
+              } else {
+                unpaidTotal += amount;
+              }
+            });
+
+            return { cashTotal, cardTotal, unpaidTotal };
+          })();
+
+          const getStatusClass = (status) => {
+            switch (status) {
+              case 'pending':
+                return 'bg-orange-50 text-orange-700 border border-orange-100';
+              case 'completed':
+              case 'served':
+                return 'bg-green-50 text-green-700 border border-green-100';
+              case 'cancelled':
+                return 'bg-red-50 text-red-700 border border-red-100';
+              default:
+                return 'bg-blue-50 text-blue-700 border border-blue-100';
+            }
+          };
+
+          const formatTypeLabel = (type) => {
+            if (type === 'delivery') return 'Delivery';
+            if (type === 'takeaway') return 'Take Away';
+            return 'Dine In';
+          };
+
+          const activePreps = orders.filter(o => ['pending', 'confirmed', 'cooking', 'ready'].includes(o.status));
+
           return (
-            <div className="animate-fade-in flex flex-col gap-8">
-              {/* Widgets Row 1 - Performance Metrics */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {/* 1. Today's Revenue */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
-                  <div className="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-                    <DollarSign size={22} />
+            <div className="animate-fade-in flex flex-col gap-6">
+              {/* KPI Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* 1. Revenue */}
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
+                    <DollarSign size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Sales</span>
-                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">Rs {metrics.todaySales.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Revenue</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {metrics.todaySales.toFixed(2)}</span>
                   </div>
                 </div>
 
-                {/* 2. Today's Orders */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
-                  <div className="h-12 w-12 bg-rose-50 text-[#E63946] rounded-xl flex items-center justify-center shrink-0">
+                {/* 2. Orders */}
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
                     <ShoppingBag size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Orders Today</span>
-                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">{metrics.todayOrdersCount}</span>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Orders</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.todayOrdersCount}</span>
                   </div>
                 </div>
 
                 {/* 3. Average Order Value */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
-                  <div className="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
                     <TrendingUp size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Avg Order Value</span>
-                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">Rs {metrics.averageOrderValue.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Average Value</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {metrics.averageOrderValue.toFixed(2)}</span>
                   </div>
                 </div>
 
                 {/* 4. Completed Orders */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex items-center gap-4">
-                  <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
                     <CheckCircle2 size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Completed Orders</span>
-                    <span className="text-2xl font-black text-[#2B2D42] mt-1 block">{metrics.completedOrdersCount}</span>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Completed</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.completedOrdersCount}</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Widgets Row 2 - Tables Status & Kitchen */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* 5. Active Tables */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Tables</span>
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
+                    <Activity size={20} />
                   </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.activeTablesCount}</span>
-                    <span className="text-xs text-slate-400 block mt-1">Tables with live orders</span>
+                  <div>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Active Tables</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.activeTablesCount}</span>
                   </div>
                 </div>
 
                 {/* 6. Occupied Tables */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Occupied Tables</span>
-                    <span className="text-xs font-bold px-2 py-0.5 bg-rose-50 text-[#E63946] border border-rose-100 rounded-full">Seated</span>
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
+                    <Users size={20} />
                   </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.occupiedTablesCount}</span>
-                    <span className="text-xs text-slate-400 block mt-1">Confirmed & cooking sessions</span>
+                  <div>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Occupied Tables</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.occupiedTablesCount}</span>
                   </div>
                 </div>
 
                 {/* 7. Available Tables */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Tables</span>
-                    <span className="text-xs font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full">Free</span>
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
+                    <Plus size={20} />
                   </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.availableTablesCount}</span>
-                    <span className="text-xs text-slate-400 block mt-1">Ready for seating (out of {tableCount})</span>
+                  <div>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Available Tables</span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.availableTablesCount}</span>
                   </div>
                 </div>
 
-                {/* 8. Kitchen Pending Orders */}
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {/* 8. Kitchen Queue */}
+                <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                  <div className="text-zinc-500 shrink-0">
+                    <ClipboardList size={20} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
                       {settingsKitchenMode === 'printer_only' ? 'Active Orders' : 'Kitchen Queue'}
                     </span>
-                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
-                  </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-black text-[#2B2D42]">{metrics.kitchenPendingCount}</span>
-                    <span className="text-xs text-slate-400 block mt-1">
-                      {settingsKitchenMode === 'printer_only' ? 'Orders currently active' : 'Orders in pending/prep queue'}
-                    </span>
+                    <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.kitchenPendingCount}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Main Analytics: Revenue Chart vs. Top Items */}
+              {/* Main Content Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Revenue Chart Widget */}
-                <div className="lg:col-span-2 bg-white border border-slate-150 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.03)] flex flex-col justify-between min-h-[380px]">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
-                    <div>
-                      <h3 className="text-base font-bold text-[#2B2D42]">Revenue Trends</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">Performance tracking chart</p>
+                {/* Column 1 & 2: Revenue Chart and Live Orders */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                  {/* Revenue Chart Widget */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col justify-between min-h-[380px]">
+                    <div className="flex justify-between items-center border-b border-zinc-150 pb-4 mb-6">
+                      <div>
+                        <h3 className="text-base font-bold text-zinc-900">Revenue</h3>
+                      </div>
+                      <div className="flex bg-zinc-50 border border-zinc-200 rounded-xl p-1 gap-1">
+                        <button
+                          onClick={() => setDashboardChartTab('today')}
+                          className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
+                            dashboardChartTab === 'today' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-400 hover:text-zinc-800'
+                          }`}
+                        >
+                          Today
+                        </button>
+                        <button
+                          onClick={() => setDashboardChartTab('week')}
+                          className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
+                            dashboardChartTab === 'week' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-400 hover:text-zinc-800'
+                          }`}
+                        >
+                          Weekly
+                        </button>
+                        <button
+                          onClick={() => setDashboardChartTab('month')}
+                          className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
+                            dashboardChartTab === 'month' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-400 hover:text-zinc-800'
+                          }`}
+                        >
+                          Monthly
+                        </button>
+                      </div>
                     </div>
-                    {/* Chart Selector buttons */}
-                    <div className="flex bg-slate-50 border border-slate-200 rounded-xl p-1 gap-1">
-                      <button
-                        onClick={() => setDashboardChartTab('today')}
-                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
-                          dashboardChartTab === 'today' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-black'
-                        }`}
-                      >
-                        Today
-                      </button>
-                      <button
-                        onClick={() => setDashboardChartTab('week')}
-                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
-                          dashboardChartTab === 'week' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-black'
-                        }`}
-                      >
-                        Weekly
-                      </button>
-                      <button
-                        onClick={() => setDashboardChartTab('month')}
-                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${
-                          dashboardChartTab === 'month' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-black'
-                        }`}
-                      >
-                        Monthly
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* SVG / Custom HTML Bar Graph */}
-                  {chartData.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center text-slate-400 italic text-sm py-20">
-                      No sales records for this period.
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex flex-col justify-end">
-                      {/* Bar Bars Row */}
-                      <div className="flex items-end gap-3.5 sm:gap-4 h-56 px-2 relative border-b border-slate-100">
-                        {/* Horizontal Gridlines */}
-                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-1">
-                          <div className="border-t border-dashed border-slate-100 w-full"></div>
-                          <div className="border-t border-dashed border-slate-100 w-full"></div>
-                          <div className="border-t border-dashed border-slate-100 w-full"></div>
-                          <div className="border-t border-dashed border-slate-100 w-full"></div>
+                    {chartData.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-sm py-20">
+                        No sales records for this period.
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col justify-end">
+                        <div className="flex items-end gap-4 h-56 px-2 relative border-b border-zinc-100">
+                          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-1">
+                            <div className="border-t border-dashed border-zinc-100 w-full"></div>
+                            <div className="border-t border-dashed border-zinc-100 w-full"></div>
+                            <div className="border-t border-dashed border-zinc-100 w-full"></div>
+                            <div className="border-t border-dashed border-zinc-100 w-full"></div>
+                          </div>
+
+                          {chartData.map((item, index) => {
+                            const percentage = (item.amount / maxChartAmount) * 100;
+                            return (
+                              <div key={index} className="flex-1 h-full flex flex-col justify-end items-center group relative z-5">
+                                <div className="absolute bottom-full mb-2 bg-zinc-950 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                                  <span className="block text-center font-mono">Rs {item.amount.toFixed(2)}</span>
+                                  <span className="block text-center text-[8px] text-zinc-400 mt-0.5">{item.count} Orders</span>
+                                </div>
+                                <div 
+                                  style={{ height: `${Math.max(4, percentage)}%` }}
+                                  className="w-full rounded-t bg-zinc-800 hover:bg-zinc-900 transition-colors cursor-pointer relative"
+                                ></div>
+                              </div>
+                            );
+                          })}
                         </div>
 
-                        {chartData.map((item, index) => {
-                          const percentage = (item.amount / maxChartAmount) * 100;
-                          return (
-                            <div key={index} className="flex-1 h-full flex flex-col justify-end items-center group relative z-5">
-                              {/* Tooltip Popup on Hover */}
-                              <div className="absolute bottom-full mb-2 bg-black text-white text-[10px] font-black py-1.5 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
-                                <span className="block text-center font-mono">Rs {item.amount.toFixed(2)}</span>
-                                <span className="block text-center text-[8px] text-zinc-400 mt-0.5">{item.count} Orders</span>
-                              </div>
-                              {/* Vertical Bar */}
-                              <div 
-                                style={{ height: `${Math.max(4, percentage)}%` }}
-                                className="w-full rounded-t-lg bg-gradient-to-t from-[#E63946] to-[#FF6B35] group-hover:from-[#2B2D42] group-hover:to-[#2B2D42] transition-all cursor-pointer shadow-sm relative overflow-hidden"
-                              >
-                                <div className="absolute inset-y-0 left-0 w-1/3 bg-white/10 skew-x-12"></div>
-                              </div>
+                        <div className="flex gap-4 px-2 mt-3 pt-1">
+                          {chartData.map((item, index) => (
+                            <div key={index} className="flex-1 text-center text-[10px] font-semibold text-zinc-400 truncate">
+                              {item.label}
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
                       </div>
+                    )}
+                  </div>
 
-                      {/* X-Axis Labels Row */}
-                      <div className="flex gap-3.5 sm:gap-4 px-2 mt-3 pt-1">
-                        {chartData.map((item, index) => (
-                          <div key={index} className="flex-1 text-center text-[10px] font-bold text-slate-400 truncate">
-                            {item.label}
-                          </div>
-                        ))}
-                      </div>
+                  {/* Live Orders Table */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs">
+                    <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-5">Live Orders</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-zinc-800">
+                        <thead>
+                          <tr className="uppercase bg-zinc-50 text-zinc-400 font-bold border-b border-zinc-150">
+                            <th className="px-4 py-3 rounded-l-lg">Order</th>
+                            <th className="px-4 py-3">Table</th>
+                            <th className="px-4 py-3">Customer</th>
+                            <th className="px-4 py-3">Type</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Total</th>
+                            <th className="px-4 py-3 text-right rounded-r-lg">Time</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {metrics.recentOrdersList.length === 0 ? (
+                            <tr>
+                              <td colSpan="7" className="text-center py-8 text-zinc-400 italic">No orders received yet.</td>
+                            </tr>
+                          ) : (
+                            metrics.recentOrdersList.map(order => (
+                              <tr key={order.id} className="hover:bg-zinc-50/50 transition-colors">
+                                <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
+                                <td className="px-4 py-3 font-semibold text-zinc-900">
+                                  Table {String(order.table_name || order.table).replace(/[^0-9]/g, '')}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-500 font-medium">
+                                  {order.billing?.customerName || 'Walk-in'}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-500 font-medium">
+                                  {formatTypeLabel(order.order_type || order.billing?.order_type)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider ${getStatusClass(order.status)}`}>
+                                    {order.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 font-bold font-mono text-zinc-900">Rs {order.billing?.total?.toFixed(2) || '0.00'}</td>
+                                <td className="px-4 py-3 text-right text-zinc-400 font-semibold">
+                                  {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Top Selling Items & Quick Analytics */}
+                {/* Column 3: Secondary Widgets */}
                 <div className="flex flex-col gap-6">
-                  {/* Top Items Widget */}
-                  <div className="bg-white border border-slate-150 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.03)] flex-1 flex flex-col">
-                    <h3 className="text-base font-bold text-[#2B2D42] border-b border-slate-100 pb-3 mb-4">Top Selling Items</h3>
+                  {/* Top Selling Items */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col min-h-[220px]">
+                    <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Top Selling Items</h3>
                     {(!salesData?.topItems || salesData.topItems.length === 0) ? (
-                      <div className="flex-1 flex items-center justify-center text-slate-400 italic text-xs">
+                      <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-xs">
                         No item metrics computed yet.
                       </div>
                     ) : (
@@ -1212,15 +1295,15 @@ export default function AdminView() {
                           const totalSold = salesData.topItems.reduce((sum, i) => sum + i.quantity, 0) || 1;
                           const sharePct = (item.quantity / totalSold) * 100;
                           return (
-                            <div key={index} className="flex flex-col gap-1">
-                              <div className="flex justify-between items-center text-xs font-bold text-[#2B2D42]">
+                            <div key={index} className="flex flex-col gap-1.5">
+                              <div className="flex justify-between items-center text-xs font-semibold text-zinc-800">
                                 <span className="truncate">{item.name}</span>
-                                <span className="text-slate-400 font-mono shrink-0 ml-2">{item.quantity} sold</span>
+                                <span className="text-zinc-500 font-mono shrink-0 ml-2">{item.quantity} sold</span>
                               </div>
-                              <div className="h-2 w-full bg-slate-50 border border-slate-100 rounded-full overflow-hidden">
+                              <div className="h-1.5 w-full bg-zinc-50 border border-zinc-150 rounded-full overflow-hidden">
                                 <div 
                                   style={{ width: `${sharePct}%` }}
-                                  className="h-full bg-gradient-to-r from-[#E63946] to-[#FF6B35] rounded-full"
+                                  className="h-full bg-zinc-800 rounded-full"
                                 ></div>
                               </div>
                             </div>
@@ -1230,67 +1313,56 @@ export default function AdminView() {
                     )}
                   </div>
 
-                  {/* Busiest Peak Hour Widget */}
-                  <div className="bg-gradient-to-br from-[#E63946] to-[#FF6B35] text-white p-6 rounded-2xl shadow-xl flex items-center gap-4 shrink-0">
-                    <div className="h-12 w-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                      <Flame size={22} className="text-white" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider block text-white/70">Peak Ordering Hours</span>
-                      <span className="text-lg font-black mt-0.5 block">{getPeakOrderingHour()}</span>
-                      <span className="text-[9px] font-semibold text-white/60 block mt-0.5">Based on all historical order volumes</span>
+                  {/* Kitchen Status Widget */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
+                    <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Kitchen Status</h3>
+                    {activePreps.length === 0 ? (
+                      <div className="py-6 text-center text-zinc-400 italic text-xs">No orders in kitchen.</div>
+                    ) : (
+                      <ul className="flex flex-col gap-3">
+                        {activePreps.slice(0, 5).map((o, idx) => (
+                          <li key={idx} className="flex justify-between items-center text-xs border-b border-zinc-100 pb-2 last:border-0 last:pb-0">
+                            <span className="font-semibold text-zinc-800">
+                              Table {String(o.table_name || o.table).replace(/[^0-9]/g, '')}
+                            </span>
+                            <span className={`px-2 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider ${getStatusClass(o.status)}`}>
+                              {o.status}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Payment Summary Widget */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
+                    <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Payment Summary</h3>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-zinc-500">Cash Payments</span>
+                        <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cashTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-zinc-500">Card Payments</span>
+                        <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cardTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2.5">
+                        <span className="font-semibold text-zinc-800">Unpaid / Settle Pending</span>
+                        <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.unpaidTotal.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Recent Orders Section */}
-              <div className="bg-white border border-slate-150 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.03)]">
-                <h3 className="text-base font-bold text-[#2B2D42] border-b border-slate-100 pb-3 mb-5">Recent Orders</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-[#2B2D42]">
-                    <thead>
-                      <tr className="uppercase bg-slate-50 text-slate-400 font-black border-b border-slate-100">
-                        <th className="px-4 py-3.5 rounded-l-xl">Order ID</th>
-                        <th className="px-4 py-3.5">Table</th>
-                        <th className="px-4 py-3.5">Items</th>
-                        <th className="px-4 py-3.5">Total</th>
-                        <th className="px-4 py-3.5">Status</th>
-                        <th className="px-4 py-3.5 text-right rounded-r-xl">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {metrics.recentOrdersList.length === 0 ? (
-                        <tr>
-                          <td colSpan="6" className="text-center py-8 text-slate-400 italic">No orders received yet.</td>
-                        </tr>
-                      ) : (
-                        metrics.recentOrdersList.map(order => (
-                          <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
-                            <td className="px-4 py-3 font-bold">
-                              Table {String(order.table_name || order.table).replace(/[^0-9]/g, '')}
-                              {order.billing?.waiterName && (
-                                <span className="text-[9px] text-slate-400 block font-normal mt-0.5">Waiter: {order.billing.waiterName}</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-slate-500 font-medium">
-                              {order.items?.map(i => `${i.name} (x${i.quantity})`).join(', ') || '0 Items'}
-                            </td>
-                            <td className="px-4 py-3 font-bold font-mono">Rs {order.billing?.total?.toFixed(2) || '0.00'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2.5 py-1 border text-[9px] font-bold rounded-full uppercase tracking-wider ${STATUS_COLORS[order.status || 'pending']}`}>
-                                {order.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right text-slate-400 font-semibold">
-                              {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                  {/* Peak Ordering Hour Widget */}
+                  <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4 shrink-0">
+                    <div className="h-10 w-10 border border-zinc-150 text-zinc-500 rounded-lg flex items-center justify-center shrink-0">
+                      <Flame size={18} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider block text-zinc-400">Peak Ordering Hours</span>
+                      <span className="text-sm font-bold mt-0.5 block text-zinc-900">{getPeakOrderingHour()}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
