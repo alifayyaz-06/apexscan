@@ -31,6 +31,17 @@ export default function AdminView() {
   const [dashboardChartTab, setDashboardChartTab] = useState('today');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [analyticsMode, setAnalyticsMode] = useState('daily');
+  const [analyticsDate, setAnalyticsDate] = useState(() => {
+    const local = new Date();
+    const offset = local.getTimezoneOffset();
+    const localDate = new Date(local.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
+  });
+  const [analyticsMonth, setAnalyticsMonth] = useState(() => {
+    const local = new Date();
+    return `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const getTrialRemainingDays = () => {
     if (!user?.expiresAt) return 0;
@@ -155,21 +166,42 @@ export default function AdminView() {
       return;
     }
 
-    // 1. Filter by period (today, month, year, or all)
-    const now = new Date();
-    if (csvPeriod === 'today') {
-      completed = completed.filter(o => new Date(o.timestamp).toDateString() === now.toDateString());
-    } else if (csvPeriod === 'month') {
-      completed = completed.filter(o => {
-        const d = new Date(o.timestamp);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-    } else if (csvPeriod === 'year') {
-      completed = completed.filter(o => new Date(o.timestamp).getFullYear() === now.getFullYear());
+    // Filter by period selected on the analytics page
+    if (activeTab === 'sales') {
+      if (analyticsMode === 'daily') {
+        const startRange = new Date(analyticsDate);
+        startRange.setHours(0, 0, 0, 0);
+        const endRange = new Date(startRange.getTime() + 24 * 60 * 60 * 1000);
+        completed = completed.filter(o => {
+          const d = new Date(o.timestamp || o.created_at);
+          return d >= startRange && d < endRange;
+        });
+      } else {
+        const [yr, mo] = analyticsMonth.split('-').map(Number);
+        const startRange = new Date(yr, mo - 1, 1);
+        const endRange = new Date(yr, mo, 1);
+        completed = completed.filter(o => {
+          const d = new Date(o.timestamp || o.created_at);
+          return d >= startRange && d < endRange;
+        });
+      }
+    } else {
+      // 1. Filter by period (today, month, year, or all) for other pages if applicable
+      const now = new Date();
+      if (csvPeriod === 'today') {
+        completed = completed.filter(o => new Date(o.timestamp).toDateString() === now.toDateString());
+      } else if (csvPeriod === 'month') {
+        completed = completed.filter(o => {
+          const d = new Date(o.timestamp);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+      } else if (csvPeriod === 'year') {
+        completed = completed.filter(o => new Date(o.timestamp).getFullYear() === now.getFullYear());
+      }
     }
 
     if (completed.length === 0) {
-      toast.error(`No completed sales transactions found for period: "${csvPeriod}".`);
+      toast.error("No completed sales transactions found for the selected period.");
       return;
     }
 
@@ -1817,85 +1849,488 @@ export default function AdminView() {
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {/* TAB 3: SALES ANALYTICS                         */}
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {activeTab === 'sales' && (
-            <div className="animate-fade-in">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-[#2B2D42]">Sales Dashboard</h2>
-                </div>
-                {salesData && (
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <select
-                      value={csvPeriod}
-                      onChange={(e) => setCsvPeriod(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl text-sm text-[#2B2D42] px-4 py-2.5 focus:outline-none focus:border-[#E63946]/50 appearance-none cursor-pointer shadow-sm"
-                    >
-                      <option value="all">All Time Report</option>
-                      <option value="today">Today's Report</option>
-                      <option value="month">This Month's Report</option>
-                      <option value="year">This Year's Report</option>
-                    </select>
+          {activeTab === 'sales' && (() => {
+            // Local Period Date Range
+            let startRange = new Date();
+            let endRange = new Date();
+            let periodLabel = '';
+
+            if (analyticsMode === 'daily') {
+              startRange = new Date(analyticsDate);
+              startRange.setHours(0, 0, 0, 0);
+              endRange = new Date(startRange.getTime() + 24 * 60 * 60 * 1000);
+              periodLabel = new Date(analyticsDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+            } else {
+              const [yr, mo] = analyticsMonth.split('-').map(Number);
+              startRange = new Date(yr, mo - 1, 1);
+              endRange = new Date(yr, mo, 1);
+              periodLabel = startRange.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long'
+              });
+            }
+
+            // Filter orders for the selected period
+            const periodCompletedOrders = orders.filter(o => 
+              o.status === 'completed' && 
+              new Date(o.timestamp || o.created_at) >= startRange && 
+              new Date(o.timestamp || o.created_at) < endRange
+            );
+            const periodAllOrders = orders.filter(o => 
+              new Date(o.timestamp || o.created_at) >= startRange && 
+              new Date(o.timestamp || o.created_at) < endRange
+            );
+
+            // Metrics
+            const periodRevenue = periodCompletedOrders.reduce((sum, o) => sum + (o.billing?.total || 0), 0);
+            const periodOrdersCount = periodAllOrders.length;
+            const completedCount = periodCompletedOrders.length;
+            const periodAverageValue = completedCount > 0 ? (periodRevenue / completedCount) : 0;
+            const periodCompletedCount = completedCount;
+
+            const paymentSummary = (() => {
+              let cashTotal = 0;
+              let cardTotal = 0;
+              let unpaidTotal = 0;
+
+              periodCompletedOrders.forEach(o => {
+                const method = String(o.billing?.paymentMethod || 'cash').toLowerCase();
+                const amount = o.billing?.total || 0;
+                if (method === 'card') {
+                  cardTotal += amount;
+                } else if (method === 'cash') {
+                  cashTotal += amount;
+                } else {
+                  unpaidTotal += amount;
+                }
+              });
+
+              return { cashTotal, cardTotal, unpaidTotal };
+            })();
+
+            const orderTypeBreakdown = (() => {
+              const counts = { dineIn: 0, takeaway: 0, delivery: 0 };
+              periodAllOrders.forEach(o => {
+                const rawType = o.order_type || o.billing?.order_type;
+                const tbl = String(o.table_name || o.table || '').toLowerCase();
+                const isTakeaway = rawType === 'takeaway' || tbl.includes('take away') || tbl.includes('takeaway');
+                const isDelivery = rawType === 'delivery' || tbl.includes('delivery');
+                if (isTakeaway) counts.takeaway++;
+                else if (isDelivery) counts.delivery++;
+                else counts.dineIn++;
+              });
+              const total = counts.dineIn + counts.takeaway + counts.delivery;
+              const safeTotal = total || 1;
+              return {
+                ...counts,
+                total,
+                dineInPct: (counts.dineIn / safeTotal) * 100,
+                takeawayPct: (counts.takeaway / safeTotal) * 100,
+                deliveryPct: (counts.delivery / safeTotal) * 100,
+              };
+            })();
+
+            const topItems = (() => {
+              const tracker = {};
+              periodCompletedOrders.forEach(o => {
+                (o.items || []).forEach(item => {
+                  if (!tracker[item.name]) {
+                    tracker[item.name] = { quantity: 0, revenue: 0 };
+                  }
+                  tracker[item.name].quantity += item.quantity;
+                  tracker[item.name].revenue += (item.price || 0) * item.quantity;
+                });
+              });
+              return Object.entries(tracker)
+                .map(([name, stat]) => ({ name, quantity: stat.quantity, revenue: stat.revenue }))
+                .sort((a, b) => b.quantity - a.quantity)
+                .slice(0, 5);
+            })();
+
+            const periodOrdersList = [...periodAllOrders]
+              .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
+              .slice(0, 5);
+
+            // Dynamic Chart Hourly aggregation for selected mode
+            let chartData = [];
+            if (analyticsMode === 'daily') {
+              chartData = Array(12).fill(0).map((_, i) => ({ label: `${11 + i}:00`, amount: 0, count: 0 }));
+              periodCompletedOrders.forEach(o => {
+                const hour = new Date(o.timestamp || o.created_at).getHours();
+                const hourIdx = hour - 11;
+                if (hourIdx >= 0 && hourIdx < 12) {
+                  chartData[hourIdx].amount += o.billing?.total || 0;
+                  chartData[hourIdx].count++;
+                }
+              });
+            } else {
+              // Monthly: list of days in this month
+              const [yr, mo] = analyticsMonth.split('-').map(Number);
+              const daysInMonth = new Date(yr, mo, 0).getDate();
+              chartData = Array(daysInMonth).fill(0).map((_, i) => ({ label: String(i + 1), amount: 0, count: 0 }));
+              periodCompletedOrders.forEach(o => {
+                const day = new Date(o.timestamp || o.created_at).getDate();
+                const dayIdx = day - 1;
+                if (dayIdx >= 0 && dayIdx < daysInMonth) {
+                  chartData[dayIdx].amount += o.billing?.total || 0;
+                  chartData[dayIdx].count++;
+                }
+              });
+            }
+
+            const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
+
+            const getStatusClass = (status) => {
+              switch (status) {
+                case 'pending':
+                  return 'bg-orange-50 text-orange-700 border border-orange-100';
+                case 'completed':
+                case 'served':
+                  return 'bg-green-50 text-green-700 border border-green-100';
+                case 'cancelled':
+                  return 'bg-red-50 text-red-700 border border-red-100';
+                default:
+                  return 'bg-blue-50 text-blue-700 border border-blue-100';
+              }
+            };
+
+            const formatTypeLabel = (type) => {
+              if (type === 'delivery') return 'Delivery';
+              if (type === 'takeaway') return 'Take Away';
+              return 'Dine In';
+            };
+
+            return (
+              <div className="animate-fade-in flex flex-col gap-6">
+                {/* Header Controls Banner */}
+                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#E63946] block">Sales Analytics</span>
+                    <h2 className="text-base font-bold text-zinc-900 mt-0.5">{periodLabel}</h2>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto sm:justify-end">
+                    <div className="flex bg-zinc-50 border border-zinc-200 rounded-xl p-1 gap-1">
+                      <button
+                        onClick={() => setAnalyticsMode('daily')}
+                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${analyticsMode === 'daily' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-400 hover:text-zinc-800'
+                          }`}
+                      >
+                        Daily Mode
+                      </button>
+                      <button
+                        onClick={() => setAnalyticsMode('monthly')}
+                        className={`px-3 py-1.5 text-xs font-bold transition-all rounded-lg ${analyticsMode === 'monthly' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-400 hover:text-zinc-800'
+                          }`}
+                      >
+                        Monthly Mode
+                      </button>
+                    </div>
+
+                    {analyticsMode === 'daily' ? (
+                      <input 
+                        type="date" 
+                        value={analyticsDate} 
+                        onChange={(e) => setAnalyticsDate(e.target.value)} 
+                        className="bg-white border border-zinc-200 rounded-lg text-xs font-bold px-3 py-1.5 text-zinc-900 focus:outline-none focus:ring-1 focus:ring-[#E63946] cursor-pointer"
+                      />
+                    ) : (
+                      <input 
+                        type="month" 
+                        value={analyticsMonth} 
+                        onChange={(e) => setAnalyticsMonth(e.target.value)} 
+                        className="bg-white border border-zinc-200 rounded-lg text-xs font-bold px-3 py-1.5 text-zinc-900 focus:outline-none focus:ring-1 focus:ring-[#E63946] cursor-pointer"
+                      />
+                    )}
+
                     <button
                       onClick={downloadSalesReport}
-                      className="flex items-center gap-1.5 bg-[#E63946] hover:bg-[#FF6B35] text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-md shadow-[#E63946]/20 transition-colors shrink-0"
+                      className="flex items-center gap-1.5 bg-[#E63946] hover:bg-[#FF6B35] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-[#E63946]/20 transition-all cursor-pointer shrink-0"
                     >
-                      <Download size={16} /> Download CSV
+                      <Download size={14} /> Download CSV
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {salesLoading ? (
-                <div className="text-center py-20 text-slate-500">Calculating statistics…</div>
-              ) : !salesData ? (
-                <div className="text-center py-20 text-slate-400">Failed to aggregate sales records.</div>
-              ) : (
-                <div className="flex flex-col gap-8">
-                  {/* Metrics Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</span>
-                      <span className="text-3xl font-black text-[#E63946] mt-2">Rs {salesData.metrics.today.revenue.toFixed(2)}</span>
-                      <span className="text-xs text-slate-500 mt-1">{salesData.metrics.today.count} completed orders</span>
+                {/* KPI Cards Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-[#E63946]/5 border border-[#E63946]/10 flex items-center justify-center text-[#E63946] shrink-0">
+                      <DollarSign size={18} />
                     </div>
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Weekly Revenue</span>
-                      <span className="text-3xl font-black text-[#2B2D42] mt-2">Rs {salesData.metrics.week.revenue.toFixed(2)}</span>
-                      <span className="text-xs text-slate-500 mt-1">{salesData.metrics.week.count} orders (last 7 days)</span>
-                    </div>
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Monthly Revenue</span>
-                      <span className="text-3xl font-black text-[#2B2D42] mt-2">Rs {salesData.metrics.month.revenue.toFixed(2)}</span>
-                      <span className="text-xs text-slate-500 mt-1">{salesData.metrics.month.count} orders (last 30 days)</span>
-                    </div>
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] flex flex-col justify-between">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">All-Time Count</span>
-                      <span className="text-3xl font-black text-slate-700 mt-2">{salesData.metrics.allTimeCompletedCount}</span>
-                      <span className="text-xs text-slate-500 mt-1">Total completed checks</span>
+                    <div>
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Period Revenue</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {periodRevenue.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  {/* Top Items List */}
-                  <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.035)] max-w-md">
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-[#2B2D42] mb-4">Top 5 Best Selling Items</h3>
-                    <ul className="flex flex-col gap-3">
-                      {salesData.topItems.map((item, idx) => (
-                        <li key={idx} className="flex justify-between items-center text-sm border-b border-slate-100 pb-2 last:border-0 last:pb-0">
-                          <span className="font-semibold text-slate-650 flex items-center gap-2">
-                            <span className="w-5 h-5 bg-red-50 text-[#E63946] text-xs font-bold rounded flex items-center justify-center">{idx + 1}</span>
-                            {item.name}
-                          </span>
-                          <span className="font-bold bg-slate-50 border border-slate-200 text-slate-600 px-2.5 py-0.5 rounded-lg text-xs">
-                            {item.quantity} sold • Rs {item.revenue ? item.revenue.toFixed(2) : '0.00'}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-650 shrink-0">
+                      <ShoppingBag size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Total Orders</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">{periodOrdersCount}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-650 shrink-0">
+                      <TrendingUp size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Average Value</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {periodAverageValue.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-650 shrink-0">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Completed</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">{periodCompletedCount}</span>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Main Content Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 flex flex-col gap-6">
+                    {/* SVG Line / Area Chart */}
+                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col justify-between min-h-[380px]">
+                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-150 pb-4 mb-6">Revenue Trend</h3>
+                      {chartData.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-sm py-20">
+                          No sales records for this period.
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col justify-end">
+                          {(() => {
+                            const width = 500;
+                            const height = 180;
+                            const padding = 15;
+                            const points = chartData.map((item, idx) => {
+                              const x = padding + (idx * (width - padding * 2)) / (chartData.length - 1 || 1);
+                              const y = height - padding - (item.amount / maxChartAmount) * (height - padding * 2);
+                              return { x, y, item, idx };
+                            });
+
+                            const linePath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                            const areaPath = points.length > 0
+                              ? `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
+                              : '';
+
+                            return (
+                              <div className="relative h-56 w-full mt-4">
+                                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                                  <defs>
+                                    <linearGradient id="analyticsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#E63946" stopOpacity="0.15" />
+                                      <stop offset="100%" stopColor="#E63946" stopOpacity="0.00" />
+                                    </linearGradient>
+                                  </defs>
+
+                                  <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#f4f4f5" strokeWidth="1" strokeDasharray="4 4" />
+                                  <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#f4f4f5" strokeWidth="1" strokeDasharray="4 4" />
+                                  <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e4e4e7" strokeWidth="1" />
+
+                                  {areaPath && <path d={areaPath} fill="url(#analyticsAreaGrad)" />}
+                                  {linePath && <path d={linePath} fill="none" stroke="#E63946" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+
+                                  {points.map((p, idx) => (
+                                    <g key={idx} className="group/dot cursor-pointer">
+                                      <circle
+                                        cx={p.x}
+                                        cy={p.y}
+                                        r="3.5"
+                                        fill="white"
+                                        stroke="#E63946"
+                                        strokeWidth="2"
+                                        className="transition-all duration-200 hover:r-5"
+                                      />
+                                      <foreignObject
+                                        x={p.x - 60}
+                                        y={p.y - 48}
+                                        width="120"
+                                        height="42"
+                                        className="opacity-0 group-hover/dot:opacity-100 transition-opacity pointer-events-none overflow-visible"
+                                      >
+                                        <div className="bg-zinc-950 text-white text-[9px] font-bold py-1 px-2 rounded shadow-md text-center whitespace-nowrap">
+                                          <div>Rs {p.item.amount.toFixed(2)}</div>
+                                          <div className="text-[7px] text-zinc-400 mt-0.5">{p.item.count} Orders</div>
+                                        </div>
+                                      </foreignObject>
+                                    </g>
+                                  ))}
+                                </svg>
+                              </div>
+                            );
+                          })()}
+
+                          <div className="flex gap-1.5 px-2 mt-3 pt-1">
+                            {chartData.map((item, index) => {
+                              // Conditionally space out labels for monthly view
+                              const shouldShowLabel = analyticsMode === 'daily' || index === 0 || index === chartData.length - 1 || (index + 1) % 5 === 0;
+                              return (
+                                <div key={index} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 truncate">
+                                  {shouldShowLabel ? item.label : ''}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Period Orders list */}
+                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs">
+                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-5">Period Orders</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs text-zinc-800">
+                          <thead>
+                            <tr className="uppercase bg-zinc-50 text-zinc-400 font-bold border-b border-zinc-150">
+                              <th className="px-4 py-3 rounded-l-lg">Order</th>
+                              <th className="px-4 py-3">Table</th>
+                              <th className="px-4 py-3">Customer</th>
+                              <th className="px-4 py-3">Type</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Total</th>
+                              <th className="px-4 py-3 text-right rounded-r-lg">Date/Time</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-100">
+                            {periodOrdersList.length === 0 ? (
+                              <tr>
+                                <td colSpan="7" className="text-center py-8 text-zinc-400 italic">No orders recorded in this period.</td>
+                              </tr>
+                            ) : (
+                              periodOrdersList.map(order => (
+                                <tr key={order.id} className="hover:bg-zinc-50/50 transition-colors">
+                                  <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
+                                  <td className="px-4 py-3 font-semibold text-zinc-900">
+                                    Table {String(order.table_name || order.table).replace(/[^0-9]/g, '')}
+                                  </td>
+                                  <td className="px-4 py-3 text-zinc-500 font-medium">
+                                    {order.billing?.customerName || 'Walk-in'}
+                                  </td>
+                                  <td className="px-4 py-3 text-zinc-500 font-medium">
+                                    {formatTypeLabel(order.order_type || order.billing?.order_type)}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span className={`px-2 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider ${getStatusClass(order.status)}`}>
+                                      {order.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 font-bold font-mono text-zinc-900">Rs {order.billing?.total?.toFixed(2) || '0.00'}</td>
+                                  <td className="px-4 py-3 text-right text-zinc-400 font-semibold">
+                                    {new Date(order.timestamp || order.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}{" "}
+                                    {new Date(order.timestamp || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-6">
+                    {/* Order Mix */}
+                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col items-center">
+                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-5 w-full">Order Mix</h3>
+                      {orderTypeBreakdown.total === 0 ? (
+                        <div className="py-6 text-center text-zinc-400 italic text-xs">No orders recorded in this period.</div>
+                      ) : (
+                        <>
+                          <div
+                            className="h-32 w-32 rounded-full relative"
+                            style={{
+                              background: `conic-gradient(#E63946 0% ${orderTypeBreakdown.dineInPct}%, #2B2D42 ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, #a1a1aa ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% 100%)`
+                            }}
+                          >
+                            <div className="absolute inset-3 bg-white rounded-full flex flex-col items-center justify-center">
+                              <span className="text-lg font-bold text-zinc-900">{orderTypeBreakdown.total}</span>
+                              <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Orders</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 w-full mt-5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-2 font-medium text-zinc-600">
+                                <span className="h-2 w-2 rounded-full bg-[#E63946]"></span>Dine In
+                              </span>
+                              <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.dineInPct.toFixed(0)}%</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-2 font-medium text-zinc-600">
+                                <span className="h-2 w-2 rounded-full bg-[#2B2D42]"></span>Takeaway
+                              </span>
+                              <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.takeawayPct.toFixed(0)}%</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-2 font-medium text-zinc-600">
+                                <span className="h-2 w-2 rounded-full bg-zinc-400"></span>Delivery
+                              </span>
+                              <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.deliveryPct.toFixed(0)}%</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Payment Summary */}
+                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
+                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Payment Summary</h3>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-zinc-500">Cash Payments</span>
+                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cashTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-zinc-500">Card Payments</span>
+                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cardTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2.5">
+                          <span className="font-semibold text-zinc-800">Unpaid / Settle Pending</span>
+                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.unpaidTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Top Selling Items */}
+                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col min-h-[220px]">
+                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Top Selling Items</h3>
+                      {(topItems.length === 0) ? (
+                        <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-xs">
+                          No item metrics computed yet.
+                        </div>
+                      ) : (
+                        <ul className="flex flex-col gap-3">
+                          {topItems.map((item, index) => (
+                            <li key={index} className="flex items-center justify-between gap-3 text-xs border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0">
+                              <span className="flex items-center gap-2.5 min-w-0">
+                                <span className="h-5 w-5 shrink-0 rounded bg-zinc-900 text-white text-[10px] font-bold flex items-center justify-center">
+                                  {index + 1}
+                                </span>
+                                <span className="font-semibold text-zinc-800 truncate">{item.name}</span>
+                              </span>
+                              <span className="font-mono font-bold text-zinc-500 shrink-0">{item.quantity} sold</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {/* TAB 4: QR CODE STAND GENERATION               */}
