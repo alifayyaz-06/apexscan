@@ -1434,7 +1434,11 @@ export default function AdminView() {
                                 <tr key={order.id} className="hover:bg-zinc-50/50 transition-colors">
                                   <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
                                   <td className="px-4 py-3 font-semibold text-zinc-900">
-                                    Table {String(order.table_name || order.table).replace(/[^0-9]/g, '')}
+                                    {order.order_type === 'delivery' || order.billing?.order_type === 'delivery'
+                                      ? 'Delivery'
+                                      : order.order_type === 'takeaway' || order.billing?.order_type === 'takeaway'
+                                        ? 'Take Away'
+                                        : `Table ${String(order.table_name || order.table || '').replace(/[^0-9]/g, '')}`}
                                   </td>
                                   <td className="px-4 py-3 text-zinc-500 font-medium">
                                     {order.billing?.customerName || 'Walk-in'}
@@ -2214,7 +2218,11 @@ export default function AdminView() {
                                 <tr key={order.id} className="hover:bg-zinc-50/50 transition-colors">
                                   <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
                                   <td className="px-4 py-3 font-semibold text-zinc-900">
-                                    Table {String(order.table_name || order.table).replace(/[^0-9]/g, '')}
+                                    {order.order_type === 'delivery' || order.billing?.order_type === 'delivery'
+                                      ? 'Delivery'
+                                      : order.order_type === 'takeaway' || order.billing?.order_type === 'takeaway'
+                                        ? 'Take Away'
+                                        : `Table ${String(order.table_name || order.table || '').replace(/[^0-9]/g, '')}`}
                                   </td>
                                   <td className="px-4 py-3 text-zinc-500 font-medium">
                                     {order.billing?.customerName || 'Walk-in'}
