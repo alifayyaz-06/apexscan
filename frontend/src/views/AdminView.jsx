@@ -1530,7 +1530,6 @@ export default function AdminView() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-[#2B2D42]">Sales Dashboard</h2>
-                <p className="text-slate-500 text-sm mt-1">Real-time revenue metrics & order summaries</p>
               </div>
               {salesData && (
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -1614,7 +1613,6 @@ export default function AdminView() {
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-[#2B2D42]">Secure QR Table Code Manager</h2>
-                <p className="text-slate-500 text-sm mt-1">Manage, print, and regenerate unique cryptographic table codes for QR stands</p>
               </div>
               <button
                 onClick={printAllQrs}
@@ -1637,9 +1635,6 @@ export default function AdminView() {
                     className="w-32 py-2 px-4 bg-white border border-slate-200 rounded-xl text-[#2B2D42] font-bold text-sm focus:border-[#E63946] outline-none"
                   />
                 </div>
-                <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  🔒 Table codes protect against manual URL tampering
-                </span>
               </div>
 
               <h3 className="font-bold text-sm text-[#2B2D42] mb-4">Table Codes & Development Links</h3>
@@ -1748,7 +1743,6 @@ export default function AdminView() {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-[#2B2D42]">Staff Credentials</h2>
-                <p className="text-slate-500 text-sm mt-1">Manage kitchen and sales terminal logins</p>
               </div>
               <button
                 onClick={openAddStaffModal}
@@ -1845,7 +1839,6 @@ export default function AdminView() {
           <div className="animate-fade-in max-w-4xl">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-[#2B2D42]">Restaurant Settings</h2>
-              <p className="text-slate-500 text-sm mt-1">Configure your restaurant profile, logo, contact details, tax rate, and service fees</p>
             </div>
 
             {settingsLoading ? (
