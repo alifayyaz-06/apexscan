@@ -942,15 +942,6 @@ export default function AdminView() {
             </button>
             <div>
               <h2 className="text-lg font-bold text-[#2B2D42]">{tabs.find(t => t.key === activeTab)?.label}</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {activeTab === 'dashboard' && "Restaurant's real-time performance dashboard"}
-                {activeTab === 'menu' && `${menuItems.length} items across ${catsToDisplay.length} categories`}
-                {activeTab === 'orders' && `${filteredOrders.length} orders`}
-                {activeTab === 'sales' && 'Revenue & analytics overview'}
-                {activeTab === 'qr' && `${tableCount} table QR codes`}
-                {activeTab === 'staff' && `${staffList.length} staff logins`}
-                {activeTab === 'settings' && 'Restaurant configuration'}
-              </p>
             </div>
           </div>
           <span className="text-[10px] font-black uppercase tracking-wider bg-slate-50 border border-slate-200 px-3 py-1 rounded-full text-slate-500">
@@ -1311,7 +1302,6 @@ export default function AdminView() {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-[#2B2D42]">Menu Management</h2>
-                <p className="text-slate-500 text-sm mt-1">{menuItems.length} items across {catsToDisplay.length} categories</p>
               </div>
               <button
                 onClick={openAddModal}
@@ -1375,7 +1365,6 @@ export default function AdminView() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
               <div>
                 <h2 className="text-2xl font-bold text-[#2B2D42]">All Orders</h2>
-                <p className="text-slate-500 text-sm mt-1">{orders.length} total orders</p>
               </div>
               <div className="flex gap-3 w-full sm:w-auto">
                 <div className="relative flex-1 sm:flex-initial">
