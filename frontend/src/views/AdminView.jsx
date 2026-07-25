@@ -976,7 +976,24 @@ export default function AdminView() {
                       {days > 0 ? `Free Trial — ${days} Days Remaining` : 'Trial Expired'}
                     </span>
                     <span className="text-xs opacity-85 block mt-0.5">
-                      Your 14-day free trial will end on {user.expires          {activeTab === 'dashboard' && (() => {
+                      Your 14-day free trial will end on {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="px-4 py-2 bg-black hover:bg-zinc-900 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          {/* TAB 0: DASHBOARD OVERVIEW                      */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          {activeTab === 'dashboard' && (() => {
             const metrics = getDashboardMetrics();
             const chartData = salesData?.charts?.[dashboardChartTab] || [];
             const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
