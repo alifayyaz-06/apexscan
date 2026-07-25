@@ -1077,8 +1077,12 @@ export default function AdminView() {
             })();
 
             const orderTypeBreakdown = (() => {
-              const counts = { dineIn: 0, takeaway: 0, delivery: 0 };
+              const counts = { dineIn: 0, takeaway: 0, delivery: 0, cancelled: 0 };
               dateAllOrders.forEach(o => {
+                if (o.status === 'cancelled') {
+                  counts.cancelled++;
+                  return;
+                }
                 const rawType = o.order_type || o.billing?.order_type;
                 const tbl = String(o.table_name || o.table || '').toLowerCase();
                 const isTakeaway = rawType === 'takeaway' || tbl.includes('take away') || tbl.includes('takeaway');
@@ -1087,7 +1091,7 @@ export default function AdminView() {
                 else if (isDelivery) counts.delivery++;
                 else counts.dineIn++;
               });
-              const total = counts.dineIn + counts.takeaway + counts.delivery;
+              const total = counts.dineIn + counts.takeaway + counts.delivery + counts.cancelled;
               const safeTotal = total || 1;
               return {
                 ...counts,
@@ -1095,6 +1099,7 @@ export default function AdminView() {
                 dineInPct: (counts.dineIn / safeTotal) * 100,
                 takeawayPct: (counts.takeaway / safeTotal) * 100,
                 deliveryPct: (counts.delivery / safeTotal) * 100,
+                cancelledPct: (counts.cancelled / safeTotal) * 100,
               };
             })();
 
@@ -1485,6 +1490,10 @@ export default function AdminView() {
                           <span className="text-lg font-bold text-zinc-900 block mt-0.5">{orderTypeBreakdown.delivery}</span>
                         </div>
                         <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Cancelled</span>
+                          <span className="text-lg font-bold text-rose-600 block mt-0.5">{orderTypeBreakdown.cancelled}</span>
+                        </div>
+                        <div className="col-span-2 border-t border-zinc-100 pt-2">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Total Orders</span>
                           <span className="text-lg font-bold text-zinc-900 block mt-0.5">{orderTypeBreakdown.total}</span>
                         </div>
@@ -1501,7 +1510,12 @@ export default function AdminView() {
                           <div
                             className="h-32 w-32 rounded-full relative"
                             style={{
-                              background: `conic-gradient(#E63946 0% ${orderTypeBreakdown.dineInPct}%, #2B2D42 ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, #a1a1aa ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% 100%)`
+                              background: `conic-gradient(
+                                #E63946 0% ${orderTypeBreakdown.dineInPct}%, 
+                                #2B2D42 ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, 
+                                #a1a1aa ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct + orderTypeBreakdown.deliveryPct}%, 
+                                #F43F5E ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct + orderTypeBreakdown.deliveryPct}% 100%
+                              )`
                             }}
                           >
                             <div className="absolute inset-3 bg-white rounded-full flex flex-col items-center justify-center">
@@ -1527,6 +1541,12 @@ export default function AdminView() {
                                 <span className="h-2 w-2 rounded-full bg-zinc-400"></span>Delivery
                               </span>
                               <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.deliveryPct.toFixed(0)}%</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-2 font-medium text-zinc-600">
+                                <span className="h-2 w-2 rounded-full bg-[#F43F5E]"></span>Cancelled
+                              </span>
+                              <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.cancelledPct.toFixed(0)}%</span>
                             </div>
                           </div>
                         </>
@@ -1920,8 +1940,12 @@ export default function AdminView() {
             })();
 
             const orderTypeBreakdown = (() => {
-              const counts = { dineIn: 0, takeaway: 0, delivery: 0 };
+              const counts = { dineIn: 0, takeaway: 0, delivery: 0, cancelled: 0 };
               periodAllOrders.forEach(o => {
+                if (o.status === 'cancelled') {
+                  counts.cancelled++;
+                  return;
+                }
                 const rawType = o.order_type || o.billing?.order_type;
                 const tbl = String(o.table_name || o.table || '').toLowerCase();
                 const isTakeaway = rawType === 'takeaway' || tbl.includes('take away') || tbl.includes('takeaway');
@@ -1930,7 +1954,7 @@ export default function AdminView() {
                 else if (isDelivery) counts.delivery++;
                 else counts.dineIn++;
               });
-              const total = counts.dineIn + counts.takeaway + counts.delivery;
+              const total = counts.dineIn + counts.takeaway + counts.delivery + counts.cancelled;
               const safeTotal = total || 1;
               return {
                 ...counts,
@@ -1938,6 +1962,7 @@ export default function AdminView() {
                 dineInPct: (counts.dineIn / safeTotal) * 100,
                 takeawayPct: (counts.takeaway / safeTotal) * 100,
                 deliveryPct: (counts.delivery / safeTotal) * 100,
+                cancelledPct: (counts.cancelled / safeTotal) * 100,
               };
             })();
 
@@ -2263,7 +2288,12 @@ export default function AdminView() {
                           <div
                             className="h-32 w-32 rounded-full relative"
                             style={{
-                              background: `conic-gradient(#E63946 0% ${orderTypeBreakdown.dineInPct}%, #2B2D42 ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, #a1a1aa ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% 100%)`
+                              background: `conic-gradient(
+                                #E63946 0% ${orderTypeBreakdown.dineInPct}%, 
+                                #2B2D42 ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, 
+                                #a1a1aa ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct + orderTypeBreakdown.deliveryPct}%, 
+                                #F43F5E ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct + orderTypeBreakdown.deliveryPct}% 100%
+                              )`
                             }}
                           >
                             <div className="absolute inset-3 bg-white rounded-full flex flex-col items-center justify-center">
@@ -2289,6 +2319,12 @@ export default function AdminView() {
                                 <span className="h-2 w-2 rounded-full bg-zinc-400"></span>Delivery
                               </span>
                               <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.deliveryPct.toFixed(0)}%</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-2 font-medium text-zinc-600">
+                                <span className="h-2 w-2 rounded-full bg-[#F43F5E]"></span>Cancelled
+                              </span>
+                              <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.cancelledPct.toFixed(0)}%</span>
                             </div>
                           </div>
                         </>

@@ -285,6 +285,8 @@ class Order {
 
       order.status = 'completed';
       order.billing.paymentMethod = paymentMethod;
+      order.billing.paymentStatus = 'paid';
+      order.billing.pendingAmount = 0;
       order.billing.paymentTimestamp = new Date().toISOString();
       if (confirmedBy) {
         order.billing.confirmedBy = confirmedBy;
@@ -318,6 +320,8 @@ class Order {
       if (fallback) {
         fallback.status = 'completed';
         fallback.billing.paymentMethod = paymentMethod;
+        fallback.billing.paymentStatus = 'paid';
+        fallback.billing.pendingAmount = 0;
         fallback.billing.paymentTimestamp = new Date().toISOString();
       }
       return fallback;
