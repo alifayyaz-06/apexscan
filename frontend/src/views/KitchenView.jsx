@@ -6,6 +6,14 @@ import { API_URL } from '../utils/config';
 
 const BACKEND_URL = API_URL;
 
+const formatTableName = (t) => {
+  const str = String(t || '');
+  if (/^table/i.test(str)) {
+    return str.trim();
+  }
+  return `Table ${str}`.trim();
+};
+
 export function KitchenCard({ order, onStatusChange }) {
   const [elapsed, setElapsed] = useState(0);
   const [completedItems, setCompletedItems] = useState({}); // { index: boolean }
@@ -50,7 +58,7 @@ export function KitchenCard({ order, onStatusChange }) {
         <div className="flex justify-between items-center border-b border-zinc-100 pb-3 mb-4 text-black">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-base text-zinc-950">Table {order.table_name || order.table}</span>
+              <span className="font-bold text-base text-zinc-950">{formatTableName(order.table_name || order.table)}</span>
               <span className={`text-[0.65rem] px-2 py-0.5 font-black uppercase tracking-wider border-2 rounded-lg shadow-sm ${
                 order.order_type === 'delivery' 
                   ? 'bg-orange-100 text-orange-800 border-orange-300' 
@@ -519,7 +527,7 @@ export default function KitchenView() {
                       paginatedHistory.map(order => (
                         <tr key={order.id} className="bg-white hover:bg-zinc-50/80 transition-colors border-b border-zinc-100 last:border-b-0">
                           <td className="px-5 py-3.5 font-mono text-xs text-zinc-900 font-semibold">#{order.order_number || order.id.slice(0, 8)}</td>
-                          <td className="px-5 py-3.5 font-semibold text-zinc-900">Table {order.table_name || order.table}</td>
+                          <td className="px-5 py-3.5 font-semibold text-zinc-900">{formatTableName(order.table_name || order.table)}</td>
                           <td className="px-5 py-3.5 max-w-[280px]">
                             <div className="flex flex-wrap gap-1.5">
                               {order.items.map((item, idx) => (
