@@ -1033,11 +1033,9 @@ export default function SellerView() {
 
   const getOrderBadges = (order) => {
     const badges = [];
-    if (order.order_source === 'manual') {
-      badges.push({ label: 'Manual Order', className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold uppercase tracking-wider text-[0.6rem]' });
-    } else if (order.order_source === 'waiter') {
+    if (order.order_source === 'waiter') {
       badges.push({ label: `Waiter: ${order.billing?.waiterName || 'Staff'}`, className: 'bg-amber-100 text-amber-800 border-amber-300 font-bold uppercase tracking-wider text-[0.6rem]' });
-    } else {
+    } else if (order.order_source !== 'manual') {
       badges.push({ label: 'QR Order', className: 'bg-blue-50 text-blue-700 border-blue-200 font-bold uppercase tracking-wider text-[0.6rem]' });
     }
 
@@ -1717,24 +1715,26 @@ export default function SellerView() {
       <div className="max-w-[1400px] mx-auto print:max-w-full">
         {/* Top Header */}
         <header className="flex flex-col sm:flex-row justify-between items-center bg-white border border-zinc-200 rounded-2xl p-6 mb-8 print:hidden gap-4">
-          <div className="flex items-center gap-4">
-            {user?.restaurantLogo ? (
-              <img src={user.restaurantLogo} className="h-11 w-auto object-contain border border-zinc-200 p-1 bg-white rounded-xl" alt={user.restaurantName} />
-            ) : (
-              <span className="text-xl font-bold uppercase">Logo</span>
-            )}
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-black leading-none flex items-center gap-2">
-                <span className="font-extrabold text-black font-playwrite">{user?.restaurantName || 'Apex Scan'}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider border border-zinc-200 px-2 py-0.5 rounded-lg bg-black text-white">Sales Terminal</span>
-              </h1>
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+              Representative: {user?.displayName || 'Sales Agent'}
+            </span>
+            <div className="flex items-center gap-4">
+              {user?.restaurantLogo ? (
+                <img src={user.restaurantLogo} className="h-11 w-auto object-contain border border-zinc-200 p-1 bg-white rounded-xl" alt={user.restaurantName} />
+              ) : (
+                <span className="text-xl font-bold uppercase" style={{ fontFamily: '"Times New Roman", Times, serif' }}>Logo</span>
+              )}
+              <div>
+                <h1 className="text-xl font-black tracking-tight text-black leading-none flex items-center gap-2">
+                  <span className="font-black uppercase tracking-wider text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{user?.restaurantName ? user.restaurantName.toUpperCase() : 'APEX SCAN'}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider border border-zinc-200 px-2 py-0.5 rounded-lg bg-black text-white">Sales Terminal</span>
+                </h1>
+              </div>
             </div>
           </div>
           
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 w-full sm:w-auto">
-            <span className="text-xs font-bold border border-zinc-200 px-3 py-2.5 rounded-xl bg-zinc-50 text-zinc-700">
-              👤 {user?.displayName || 'Sales Agent'}
-            </span>
             <button
               onClick={() => {
                 loadRidersList();
@@ -1763,7 +1763,7 @@ export default function SellerView() {
               className="flex items-center gap-2 px-4 py-2.5 bg-black text-white hover:bg-zinc-800 text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               <Plus size={14} strokeWidth={3} />
-              New Manual Order
+              New Order
             </button>
             <button
               onClick={() => {
