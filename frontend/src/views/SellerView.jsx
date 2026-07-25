@@ -1724,20 +1724,17 @@ export default function SellerView() {
               <span className="text-xl font-bold uppercase">Logo</span>
             )}
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-black leading-none flex items-center gap-2">
+              <h1 className="text-xl font-black tracking-tight text-black leading-none flex items-center gap-2">
                 <span className="font-extrabold text-black font-playwrite">{user?.restaurantName || 'Apex Scan'}</span>
-                <span className="text-xs font-bold uppercase tracking-wider border border-zinc-200 px-2.5 py-1 rounded-lg bg-black text-white">Sales Terminal</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider border border-zinc-200 px-2 py-0.5 rounded-lg bg-black text-white">Sales Terminal</span>
               </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <p className="text-black text-xs font-medium">Verify reviews, modify orders, and settle tables</p>
-                <span className="text-xs font-semibold border border-zinc-200 px-2.5 py-1 rounded-lg bg-zinc-50 text-zinc-700">
-                  {user?.displayName || 'Sales Agent'}
-                </span>
-              </div>
             </div>
           </div>
           
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 w-full sm:w-auto">
+            <span className="text-xs font-bold border border-zinc-200 px-3 py-2.5 rounded-xl bg-zinc-50 text-zinc-700">
+              👤 {user?.displayName || 'Sales Agent'}
+            </span>
             <button
               onClick={() => {
                 loadRidersList();
@@ -1946,14 +1943,13 @@ export default function SellerView() {
                         {order.billing?.confirmedBy && (
                           <div className="text-[10px] text-zinc-500 -mt-2">Sales Rep: {order.billing.confirmedBy}</div>
                         )}
-                        <div className="flex gap-2">
-                        <div className="flex flex-col gap-2">
+                        <div className="w-full flex flex-col gap-2">
                           {settings?.kitchen_mode === 'printer_only' && (
-                            <div className="flex gap-2">
+                            <div className="w-full">
                               {order.status === 'confirmed' && (
                                 <button
                                   onClick={() => handleUpdateOrderStatus(order.id, 'cooking', 'Order marked as preparing.')}
-                                  className="flex-1 py-2 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-colors"
+                                  className="w-full py-2 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-colors"
                                 >
                                   Mark Preparing
                                 </button>
@@ -1961,7 +1957,7 @@ export default function SellerView() {
                               {order.status === 'cooking' && (
                                 <button
                                   onClick={() => handleUpdateOrderStatus(order.id, 'ready', 'Order marked as ready to serve.')}
-                                  className="flex-1 py-2 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-colors"
+                                  className="w-full py-2 bg-black text-white hover:bg-zinc-800 font-bold text-xs rounded-xl transition-colors"
                                 >
                                   Mark Ready
                                 </button>
@@ -1982,7 +1978,6 @@ export default function SellerView() {
                               Cancel Order
                             </button>
                           </div>
-                        </div>
                         </div>
                       </div>
                     </div>
