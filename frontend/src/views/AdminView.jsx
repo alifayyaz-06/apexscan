@@ -1184,13 +1184,12 @@ export default function AdminView() {
               .slice(0, 5);
 
             // Dynamic Chart Hourly aggregation for today (current date)
-            const hourlySales = Array(12).fill(0).map((_, i) => ({ label: `${11 + i}:00`, amount: 0, count: 0 }));
+            const hourlySales = Array(24).fill(0).map((_, i) => ({ label: `${i}:00`, amount: 0, count: 0 }));
             dateCompletedOrders.forEach(o => {
               const hour = new Date(o.timestamp || o.created_at).getHours();
-              const hourIdx = hour - 11;
-              if (hourIdx >= 0 && hourIdx < 12) {
-                hourlySales[hourIdx].amount += o.billing?.total || 0;
-                hourlySales[hourIdx].count++;
+              if (hour >= 0 && hour < 24) {
+                hourlySales[hour].amount += o.billing?.total || 0;
+                hourlySales[hour].count++;
               }
             });
 
@@ -1397,12 +1396,15 @@ export default function AdminView() {
                             );
                           })()}
 
-                          <div className="flex gap-4 px-2 mt-3 pt-1">
-                            {chartData.map((item, index) => (
-                              <div key={index} className="flex-1 text-center text-[10px] font-semibold text-zinc-400 truncate">
-                                {item.label}
-                              </div>
-                            ))}
+                          <div className="flex gap-1.5 px-2 mt-3 pt-1">
+                            {chartData.map((item, index) => {
+                              const shouldShowLabel = index % 3 === 0 || index === chartData.length - 1;
+                              return (
+                                <div key={index} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 truncate">
+                                  {shouldShowLabel ? item.label : ''}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1963,13 +1965,12 @@ export default function AdminView() {
             // Dynamic Chart Hourly aggregation for selected mode
             let chartData = [];
             if (analyticsMode === 'daily') {
-              chartData = Array(12).fill(0).map((_, i) => ({ label: `${11 + i}:00`, amount: 0, count: 0 }));
+              chartData = Array(24).fill(0).map((_, i) => ({ label: `${i}:00`, amount: 0, count: 0 }));
               periodCompletedOrders.forEach(o => {
                 const hour = new Date(o.timestamp || o.created_at).getHours();
-                const hourIdx = hour - 11;
-                if (hourIdx >= 0 && hourIdx < 12) {
-                  chartData[hourIdx].amount += o.billing?.total || 0;
-                  chartData[hourIdx].count++;
+                if (hour >= 0 && hour < 24) {
+                  chartData[hour].amount += o.billing?.total || 0;
+                  chartData[hour].count++;
                 }
               });
             } else {
@@ -2179,8 +2180,10 @@ export default function AdminView() {
 
                           <div className="flex gap-1.5 px-2 mt-3 pt-1">
                             {chartData.map((item, index) => {
-                              // Conditionally space out labels for monthly view
-                              const shouldShowLabel = analyticsMode === 'daily' || index === 0 || index === chartData.length - 1 || (index + 1) % 5 === 0;
+                              // Conditionally space out labels for monthly and 24h view
+                              const shouldShowLabel = analyticsMode === 'daily'
+                                ? (index % 3 === 0 || index === chartData.length - 1)
+                                : (index === 0 || index === chartData.length - 1 || (index + 1) % 5 === 0);
                               return (
                                 <div key={index} className="flex-1 text-center text-[9px] font-semibold text-zinc-400 truncate">
                                   {shouldShowLabel ? item.label : ''}
