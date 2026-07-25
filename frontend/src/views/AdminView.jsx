@@ -895,8 +895,8 @@ export default function AdminView() {
               key={tab.key}
               onClick={() => handleTabChange(tab.key)}
               className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.key
-                  ? 'bg-[#E63946]/10 text-[#E63946]'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-[#2B2D42]'
+                ? 'bg-[#E63946]/10 text-[#E63946]'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-[#2B2D42]'
                 }`}
             >
               <tab.icon size={18} className={activeTab === tab.key ? 'text-[#E63946]' : 'text-slate-400'} />
@@ -976,27 +976,17 @@ export default function AdminView() {
                       {days > 0 ? `Free Trial — ${days} Days Remaining` : 'Trial Expired'}
                     </span>
                     <span className="text-xs opacity-85 block mt-0.5">
-                      Your 14-day free trial will end on {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}.
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="px-4 py-2 bg-black hover:bg-zinc-900 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
-                >
-                  Upgrade Now
-                </button>
-              </div>
-            );
-          })()}
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* TAB 0: DASHBOARD OVERVIEW                      */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {activeTab === 'dashboard' && (() => {
+                      Your 14-day free trial will end on {user.expires          {activeTab === 'dashboard' && (() => {
             const metrics = getDashboardMetrics();
             const chartData = salesData?.charts?.[dashboardChartTab] || [];
             const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
+
+            const todayDateString = new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
 
             const paymentSummary = (() => {
               let cashTotal = 0;
@@ -1070,10 +1060,24 @@ export default function AdminView() {
 
             return (
               <div className="animate-fade-in flex flex-col gap-6">
+                {/* Date & Today's Sales Banner */}
+                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#E63946] block">Overview</span>
+                    <h2 className="text-base font-bold text-zinc-900 mt-0.5">{todayDateString}</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-[#E63946]/5 text-[#E63946] px-4 py-2 rounded-lg font-bold text-sm border border-[#E63946]/10 flex items-center gap-2">
+                      <span>Today's Sales:</span>
+                      <span>Rs {metrics.todaySales.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* KPI Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-[#E63946]/5 border border-[#E63946]/10 flex items-center justify-center text-[#E63946] shrink-0">
                       <DollarSign size={18} />
                     </div>
                     <div>
@@ -1083,7 +1087,7 @@ export default function AdminView() {
                   </div>
 
                   <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-650 shrink-0">
                       <ShoppingBag size={18} />
                     </div>
                     <div>
@@ -1093,7 +1097,7 @@ export default function AdminView() {
                   </div>
 
                   <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-650 shrink-0">
                       <TrendingUp size={18} />
                     </div>
                     <div>
@@ -1103,7 +1107,7 @@ export default function AdminView() {
                   </div>
 
                   <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-600 shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-650 shrink-0">
                       <CheckCircle2 size={18} />
                     </div>
                     <div>
@@ -1152,30 +1156,67 @@ export default function AdminView() {
                         </div>
                       ) : (
                         <div className="flex-1 flex flex-col justify-end">
-                          <div className="flex items-end gap-4 h-56 px-2 relative border-b border-zinc-100">
-                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-1">
-                              <div className="border-t border-dashed border-zinc-100 w-full"></div>
-                              <div className="border-t border-dashed border-zinc-100 w-full"></div>
-                              <div className="border-t border-dashed border-zinc-100 w-full"></div>
-                              <div className="border-t border-dashed border-zinc-100 w-full"></div>
-                            </div>
+                          {(() => {
+                            const width = 500;
+                            const height = 180;
+                            const padding = 15;
+                            const points = chartData.map((item, idx) => {
+                              const x = padding + (idx * (width - padding * 2)) / (chartData.length - 1 || 1);
+                              const y = height - padding - (item.amount / maxChartAmount) * (height - padding * 2);
+                              return { x, y, item, idx };
+                            });
 
-                            {chartData.map((item, index) => {
-                              const percentage = (item.amount / maxChartAmount) * 100;
-                              return (
-                                <div key={index} className="flex-1 h-full flex flex-col justify-end items-center group relative z-5">
-                                  <div className="absolute bottom-full mb-2 bg-zinc-950 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
-                                    <span className="block text-center font-mono">Rs {item.amount.toFixed(2)}</span>
-                                    <span className="block text-center text-[8px] text-zinc-400 mt-0.5">{item.count} Orders</span>
-                                  </div>
-                                  <div
-                                    style={{ height: `${Math.max(4, percentage)}%` }}
-                                    className="w-full rounded-t bg-zinc-800 hover:bg-zinc-900 transition-colors cursor-pointer relative"
-                                  ></div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                            const linePath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                            const areaPath = points.length > 0
+                              ? `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
+                              : '';
+
+                            return (
+                              <div className="relative h-56 w-full mt-4">
+                                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                                  <defs>
+                                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#E63946" stopOpacity="0.15" />
+                                      <stop offset="100%" stopColor="#E63946" stopOpacity="0.00" />
+                                    </linearGradient>
+                                  </defs>
+
+                                  <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#f4f4f5" strokeWidth="1" strokeDasharray="4 4" />
+                                  <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#f4f4f5" strokeWidth="1" strokeDasharray="4 4" />
+                                  <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e4e4e7" strokeWidth="1" />
+
+                                  {areaPath && <path d={areaPath} fill="url(#areaGrad)" />}
+                                  {linePath && <path d={linePath} fill="none" stroke="#E63946" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+
+                                  {points.map((p, idx) => (
+                                    <g key={idx} className="group/dot cursor-pointer">
+                                      <circle
+                                        cx={p.x}
+                                        cy={p.y}
+                                        r="4"
+                                        fill="white"
+                                        stroke="#E63946"
+                                        strokeWidth="2"
+                                        className="transition-all duration-200 hover:r-6"
+                                      />
+                                      <foreignObject
+                                        x={p.x - 60}
+                                        y={p.y - 48}
+                                        width="120"
+                                        height="42"
+                                        className="opacity-0 group-hover/dot:opacity-100 transition-opacity pointer-events-none overflow-visible"
+                                      >
+                                        <div className="bg-zinc-950 text-white text-[9px] font-bold py-1 px-2 rounded shadow-md text-center whitespace-nowrap">
+                                          <div className="font-mono">Rs {p.item.amount.toFixed(2)}</div>
+                                          <div className="text-[7px] text-zinc-400 mt-0.5">{p.item.count} Orders</div>
+                                        </div>
+                                      </foreignObject>
+                                    </g>
+                                  ))}
+                                </svg>
+                              </div>
+                            );
+                          })()}
 
                           <div className="flex gap-4 px-2 mt-3 pt-1">
                             {chartData.map((item, index) => (
@@ -1275,7 +1316,7 @@ export default function AdminView() {
                           <div
                             className="h-32 w-32 rounded-full relative"
                             style={{
-                              background: `conic-gradient(#18181b 0% ${orderTypeBreakdown.dineInPct}%, #71717a ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, #d4d4d8 ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% 100%)`
+                              background: `conic-gradient(#E63946 0% ${orderTypeBreakdown.dineInPct}%, #2B2D42 ${orderTypeBreakdown.dineInPct}% ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}%, #a1a1aa ${orderTypeBreakdown.dineInPct + orderTypeBreakdown.takeawayPct}% 100%)`
                             }}
                           >
                             <div className="absolute inset-3 bg-white rounded-full flex flex-col items-center justify-center">
@@ -1286,19 +1327,19 @@ export default function AdminView() {
                           <div className="flex flex-col gap-2 w-full mt-5">
                             <div className="flex items-center justify-between text-xs">
                               <span className="flex items-center gap-2 font-medium text-zinc-600">
-                                <span className="h-2 w-2 rounded-full bg-zinc-900"></span>Dine In
+                                <span className="h-2 w-2 rounded-full bg-[#E63946]"></span>Dine In
                               </span>
                               <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.dineInPct.toFixed(0)}%</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
                               <span className="flex items-center gap-2 font-medium text-zinc-600">
-                                <span className="h-2 w-2 rounded-full bg-zinc-500"></span>Takeaway
+                                <span className="h-2 w-2 rounded-full bg-[#2B2D42]"></span>Takeaway
                               </span>
                               <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.takeawayPct.toFixed(0)}%</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
                               <span className="flex items-center gap-2 font-medium text-zinc-600">
-                                <span className="h-2 w-2 rounded-full bg-zinc-300"></span>Delivery
+                                <span className="h-2 w-2 rounded-full bg-zinc-400"></span>Delivery
                               </span>
                               <span className="font-mono font-bold text-zinc-800">{orderTypeBreakdown.deliveryPct.toFixed(0)}%</span>
                             </div>
@@ -1307,8 +1348,77 @@ export default function AdminView() {
                       )}
                     </div>
 
-                    {/* Tables & Kitchen */}
+                    {/* Payment Summary Widget */}
                     <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
+                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Payment Summary</h3>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-zinc-500">Cash Payments</span>
+                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cashTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-zinc-500">Card Payments</span>
+                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cardTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2.5">
+                          <span className="font-semibold text-zinc-800">Unpaid / Settle Pending</span>
+                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.unpaidTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Balanced Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Top Selling Items */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col min-h-[220px]">
+                    <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Top Selling Items</h3>
+                    {(!salesData?.topItems || salesData.topItems.length === 0) ? (
+                      <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-xs">
+                        No item metrics computed yet.
+                      </div>
+                    ) : (
+                      <ul className="flex flex-col gap-3">
+                        {salesData.topItems.slice(0, 5).map((item, index) => (
+                          <li key={index} className="flex items-center justify-between gap-3 text-xs border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0">
+                            <span className="flex items-center gap-2.5 min-w-0">
+                              <span className="h-5 w-5 shrink-0 rounded bg-zinc-900 text-white text-[10px] font-bold flex items-center justify-center">
+                                {index + 1}
+                              </span>
+                              <span className="font-semibold text-zinc-800 truncate">{item.name}</span>
+                            </span>
+                            <span className="font-mono font-bold text-zinc-500 shrink-0">{item.quantity} sold</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Kitchen Status Widget */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
+                    <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Kitchen Status</h3>
+                    {activePreps.length === 0 ? (
+                      <div className="py-6 text-center text-zinc-400 italic text-xs">No orders in kitchen.</div>
+                    ) : (
+                      <ul className="flex flex-col gap-3">
+                        {activePreps.slice(0, 5).map((o, idx) => (
+                          <li key={idx} className="flex justify-between items-center text-xs border-b border-zinc-100 pb-2 last:border-0 last:pb-0">
+                            <span className="font-semibold text-zinc-800">
+                              Table {String(o.table_name || o.table).replace(/[^0-9]/g, '')}
+                            </span>
+                            <span className={`px-2 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider ${getStatusClass(o.status)}`}>
+                              {o.status}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Tables & Kitchen Status */}
+                  <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col justify-between gap-4">
+                    <div>
                       <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Tables & Kitchen</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -1332,78 +1442,13 @@ export default function AdminView() {
                       </div>
                     </div>
 
-                    {/* Top Selling Items */}
-                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col min-h-[220px]">
-                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Top Selling Items</h3>
-                      {(!salesData?.topItems || salesData.topItems.length === 0) ? (
-                        <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-xs">
-                          No item metrics computed yet.
-                        </div>
-                      ) : (
-                        <ul className="flex flex-col gap-3">
-                          {salesData.topItems.slice(0, 5).map((item, index) => (
-                            <li key={index} className="flex items-center justify-between gap-3 text-xs border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0">
-                              <span className="flex items-center gap-2.5 min-w-0">
-                                <span className="h-5 w-5 shrink-0 rounded bg-zinc-900 text-white text-[10px] font-bold flex items-center justify-center">
-                                  {index + 1}
-                                </span>
-                                <span className="font-semibold text-zinc-800 truncate">{item.name}</span>
-                              </span>
-                              <span className="font-mono font-bold text-zinc-500 shrink-0">{item.quantity} sold</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    {/* Kitchen Status Widget */}
-                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
-                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Kitchen Status</h3>
-                      {activePreps.length === 0 ? (
-                        <div className="py-6 text-center text-zinc-400 italic text-xs">No orders in kitchen.</div>
-                      ) : (
-                        <ul className="flex flex-col gap-3">
-                          {activePreps.slice(0, 5).map((o, idx) => (
-                            <li key={idx} className="flex justify-between items-center text-xs border-b border-zinc-100 pb-2 last:border-0 last:pb-0">
-                              <span className="font-semibold text-zinc-800">
-                                Table {String(o.table_name || o.table).replace(/[^0-9]/g, '')}
-                              </span>
-                              <span className={`px-2 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider ${getStatusClass(o.status)}`}>
-                                {o.status}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    {/* Payment Summary Widget */}
-                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col">
-                      <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Payment Summary</h3>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-medium text-zinc-500">Cash Payments</span>
-                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cashTotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-medium text-zinc-500">Card Payments</span>
-                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.cardTotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs border-t border-zinc-100 pt-2.5">
-                          <span className="font-semibold text-zinc-800">Unpaid / Settle Pending</span>
-                          <span className="font-mono font-bold text-zinc-800">Rs {paymentSummary.unpaidTotal.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Peak Ordering Hour Widget */}
-                    <div className="bg-white border border-zinc-200 p-5 rounded-xl shadow-xs flex items-center gap-4 shrink-0">
-                      <div className="h-10 w-10 border border-zinc-150 text-zinc-500 rounded-lg flex items-center justify-center shrink-0">
-                        <Flame size={18} />
+                    <div className="border-t border-zinc-100 pt-4 flex items-center gap-3">
+                      <div className="h-9 w-9 rounded bg-[#E63946]/5 border border-[#E63946]/10 text-[#E63946] flex items-center justify-center shrink-0">
+                        <Flame size={16} />
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider block text-zinc-400">Peak Ordering Hours</span>
-                        <span className="text-sm font-bold mt-0.5 block text-zinc-900">{getPeakOrderingHour()}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider block text-zinc-400">Peak Hour</span>
+                        <span className="text-xs font-bold text-zinc-900">{getPeakOrderingHour()}</span>
                       </div>
                     </div>
                   </div>
@@ -1540,10 +1585,10 @@ export default function AdminView() {
                               <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-700">{formatOrderId(order)}</td>
                               <td className="px-5 py-3.5 font-bold">
                                 <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${isTakeaway
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                    : isDelivery
-                                      ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : isDelivery
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200'
                                   }`}>
                                   {typeLabel}
                                 </span>
@@ -1598,8 +1643,8 @@ export default function AdminView() {
                                 key={pageNum}
                                 onClick={() => setOrdersPage(pageNum)}
                                 className={`w-8 h-8 flex items-center justify-center border rounded-xl font-bold transition-colors cursor-pointer ${ordersPage === pageNum
-                                    ? "bg-[#E63946] text-white border-[#E63946]"
-                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                  ? "bg-[#E63946] text-white border-[#E63946]"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                                   }`}
                               >
                                 {pageNum}
@@ -1879,10 +1924,10 @@ export default function AdminView() {
                               <td className="px-6 py-4 font-mono text-xs text-slate-650">{staff.employee_code}</td>
                               <td className="px-6 py-4">
                                 <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${staff.role === 'kitchen_staff'
-                                    ? 'bg-blue-50 text-blue-600 border-blue-100'
-                                    : staff.role === 'rider'
-                                      ? 'bg-amber-50 text-amber-600 border-amber-100'
-                                      : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                  ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                  : staff.role === 'rider'
+                                    ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                   }`}>
                                   {staff.role === 'kitchen_staff'
                                     ? 'Kitchen (KDS)'
@@ -1897,8 +1942,8 @@ export default function AdminView() {
                                 <button
                                   onClick={() => handleToggleStaffActive(staff)}
                                   className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-colors ${staff.is_active
-                                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                      : 'bg-red-50 text-red-600 border-red-200'
+                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                    : 'bg-red-50 text-red-600 border-red-200'
                                     }`}
                                 >
                                   {staff.is_active ? 'Allowed' : 'Suspended'}
