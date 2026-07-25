@@ -994,10 +994,6 @@ export default function AdminView() {
           {/* TAB 0: DASHBOARD OVERVIEW                      */}
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {activeTab === 'dashboard' && (() => {
-            const metrics = getDashboardMetrics();
-            const chartData = salesData?.charts?.[dashboardChartTab] || [];
-            const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
-
             const todayDateString = new Date().toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -1005,18 +1001,35 @@ export default function AdminView() {
               day: 'numeric'
             });
 
+            // Local Date calculations for today (current date)
+            const selectedDate = new Date();
+            selectedDate.setHours(0, 0, 0, 0);
+            const nextDay = new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000);
+
+            // Filter completed and all orders for today (current date)
+            const dateCompletedOrders = orders.filter(o => 
+              o.status === 'completed' && 
+              new Date(o.timestamp || o.created_at) >= selectedDate && 
+              new Date(o.timestamp || o.created_at) < nextDay
+            );
+            const dateAllOrders = orders.filter(o => 
+              new Date(o.timestamp || o.created_at) >= selectedDate && 
+              new Date(o.timestamp || o.created_at) < nextDay
+            );
+
+            // Metrics for current date
+            const selectedDateRevenue = dateCompletedOrders.reduce((sum, o) => sum + (o.billing?.total || 0), 0);
+            const selectedDateOrdersCount = dateAllOrders.length;
+            const completedCount = dateCompletedOrders.length;
+            const selectedDateAverageValue = completedCount > 0 ? (selectedDateRevenue / completedCount) : 0;
+            const selectedDateCompletedCount = completedCount;
+
             const paymentSummary = (() => {
               let cashTotal = 0;
               let cardTotal = 0;
               let unpaidTotal = 0;
 
-              const todayStr = new Date().toDateString();
-              const todayOrders = orders.filter(o =>
-                o.status === 'completed' &&
-                new Date(o.timestamp).toDateString() === todayStr
-              );
-
-              todayOrders.forEach(o => {
+              dateCompletedOrders.forEach(o => {
                 const method = String(o.billing?.paymentMethod || 'cash').toLowerCase();
                 const amount = o.billing?.total || 0;
                 if (method === 'card') {
@@ -1033,7 +1046,7 @@ export default function AdminView() {
 
             const orderTypeBreakdown = (() => {
               const counts = { dineIn: 0, takeaway: 0, delivery: 0 };
-              orders.forEach(o => {
+              dateAllOrders.forEach(o => {
                 const rawType = o.order_type || o.billing?.order_type;
                 const tbl = String(o.table_name || o.table || '').toLowerCase();
                 const isTakeaway = rawType === 'takeaway' || tbl.includes('take away') || tbl.includes('takeaway');
@@ -1073,7 +1086,124 @@ export default function AdminView() {
               return 'Dine In';
             };
 
-            const activePreps = orders.filter(o => ['pending', 'confirmed', 'cooking', 'ready'].includes(o.status));
+            const activePreps = dateAllOrders.filter(o => ['pending', 'confirmed', 'cooking', 'ready'].includes(o.status));
+
+            const occupiedTablesSet = new Set(
+              activePreps
+                .map(o => o.table_name || o.table)
+                .filter(Boolean)
+                .map(t => String(t).replace(/^(table\s*)+/i, '').trim())
+            );
+            const activeTablesCount = occupiedTablesSet.size;
+
+            const occupiedTablesList = Array.from(new Set(
+              activePreps
+                .filter(o => ['confirmed', 'cooking', 'ready', 'served'].includes(o.status))
+                .map(o => o.table_name || o.table)
+                .filter(Boolean)
+                .map(t => String(t).replace(/^(table\s*)+/i, '').trim())
+            ));
+            const occupiedTablesCount = occupiedTablesList.length;
+            const availableTablesCount = Math.max(0, tableCount - activeTablesCount);
+            const kitchenPendingCount = dateAllOrders.filter(o => ['pending', 'confirmed', 'cooking'].includes(o.status)).length;
+
+            const getPeakHourForSelectedDate = () => {
+              if (dateAllOrders.length === 0) return 'N/A';
+              const hourCounts = {};
+              dateAllOrders.forEach(o => {
+                const hr = new Date(o.timestamp || o.created_at).getHours();
+                hourCounts[hr] = (hourCounts[hr] || 0) + 1;
+              });
+              let peak = null;
+              let max = 0;
+              Object.entries(hourCounts).forEach(([hr, cnt]) => {
+                if (cnt > max) {
+                  max = cnt;
+                  peak = parseInt(hr);
+                }
+              });
+              if (peak === null) return 'N/A';
+              const formatHour = (h) => {
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const display = h % 12 === 0 ? 12 : h % 12;
+                return `${display}:00 ${ampm}`;
+              };
+              return `${formatHour(peak)} - ${formatHour((peak + 1) % 24)}`;
+            };
+
+            const topItems = (() => {
+              const tracker = {};
+              dateCompletedOrders.forEach(o => {
+                (o.items || []).forEach(item => {
+                  if (!tracker[item.name]) {
+                    tracker[item.name] = 0;
+                  }
+                  tracker[item.name] += item.quantity;
+                });
+              });
+              return Object.entries(tracker)
+                .map(([name, quantity]) => ({ name, quantity }))
+                .sort((a, b) => b.quantity - a.quantity)
+                .slice(0, 5);
+            })();
+
+            const recentOrdersList = [...dateAllOrders]
+              .sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at))
+              .slice(0, 5);
+
+            // Dynamic Chart Hourly aggregation for today (current date)
+            const hourlySales = Array(12).fill(0).map((_, i) => ({ label: `${11 + i}:00`, amount: 0, count: 0 }));
+            dateCompletedOrders.forEach(o => {
+              const hour = new Date(o.timestamp || o.created_at).getHours();
+              const hourIdx = hour - 11;
+              if (hourIdx >= 0 && hourIdx < 12) {
+                hourlySales[hourIdx].amount += o.billing?.total || 0;
+                hourlySales[hourIdx].count++;
+              }
+            });
+
+            // Weekly: daily sales (last 7 days from today)
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            const weeklySales = Array(7).fill(0).map((_, i) => {
+              const d = new Date(selectedDate.getTime() - (6 - i) * oneDayMs);
+              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+              const startRange = new Date(d);
+              startRange.setHours(0, 0, 0, 0);
+              const endRange = new Date(startRange.getTime() + oneDayMs);
+              const dayOrders = orders.filter(o => 
+                o.status === 'completed' && 
+                new Date(o.timestamp || o.created_at) >= startRange && 
+                new Date(o.timestamp || o.created_at) < endRange
+              );
+              const amount = dayOrders.reduce((sum, o) => sum + (o.billing?.total || 0), 0);
+              return { label: dayNames[d.getDay()], amount, count: dayOrders.length };
+            });
+
+            // Monthly: weekly sales (last 4 weeks from today)
+            const monthlySales = [
+              { label: 'Week 1', startMs: 30, endMs: 22 },
+              { label: 'Week 2', startMs: 21, endMs: 15 },
+              { label: 'Week 3', startMs: 14, endMs: 8 },
+              { label: 'Week 4', startMs: 7, endMs: 0 }
+            ].map(w => {
+              const startRange = new Date(selectedDate.getTime() - w.startMs * oneDayMs);
+              const endRange = new Date(selectedDate.getTime() - w.endMs * oneDayMs + oneDayMs);
+              const weekOrders = orders.filter(o => 
+                o.status === 'completed' && 
+                new Date(o.timestamp || o.created_at) >= startRange && 
+                new Date(o.timestamp || o.created_at) < endRange
+              );
+              const amount = weekOrders.reduce((sum, o) => sum + (o.billing?.total || 0), 0);
+              return { label: w.label, amount, count: weekOrders.length };
+            });
+
+            const chartData = dashboardChartTab === 'today' 
+              ? hourlySales 
+              : dashboardChartTab === 'week' 
+                ? weeklySales 
+                : monthlySales;
+
+            const maxChartAmount = Math.max(...chartData.map(c => c.amount), 1);
 
             return (
               <div className="animate-fade-in flex flex-col gap-6">
@@ -1086,7 +1216,7 @@ export default function AdminView() {
                   <div className="flex items-center gap-2">
                     <div className="bg-[#E63946]/5 text-[#E63946] px-4 py-2 rounded-lg font-bold text-sm border border-[#E63946]/10 flex items-center gap-2">
                       <span>Today's Sales:</span>
-                      <span>Rs {metrics.todaySales.toFixed(2)}</span>
+                      <span>Rs {selectedDateRevenue.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -1099,7 +1229,7 @@ export default function AdminView() {
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Revenue</span>
-                      <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {metrics.todaySales.toFixed(2)}</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {selectedDateRevenue.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -1109,7 +1239,7 @@ export default function AdminView() {
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Orders</span>
-                      <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.todayOrdersCount}</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">{selectedDateOrdersCount}</span>
                     </div>
                   </div>
 
@@ -1119,7 +1249,7 @@ export default function AdminView() {
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Average Value</span>
-                      <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {metrics.averageOrderValue.toFixed(2)}</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">Rs {selectedDateAverageValue.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -1129,7 +1259,7 @@ export default function AdminView() {
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">Completed</span>
-                      <span className="text-xl font-bold text-zinc-900 mt-1 block">{metrics.completedOrdersCount}</span>
+                      <span className="text-xl font-bold text-zinc-900 mt-1 block">{selectedDateCompletedCount}</span>
                     </div>
                   </div>
                 </div>
@@ -1263,12 +1393,12 @@ export default function AdminView() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-zinc-100">
-                            {metrics.recentOrdersList.length === 0 ? (
+                            {recentOrdersList.length === 0 ? (
                               <tr>
                                 <td colSpan="7" className="text-center py-8 text-zinc-400 italic">No orders received yet.</td>
                               </tr>
                             ) : (
-                              metrics.recentOrdersList.map(order => (
+                              recentOrdersList.map(order => (
                                 <tr key={order.id} className="hover:bg-zinc-50/50 transition-colors">
                                   <td className="px-4 py-3 font-mono font-bold">{formatOrderId(order)}</td>
                                   <td className="px-4 py-3 font-semibold text-zinc-900">
@@ -1287,7 +1417,7 @@ export default function AdminView() {
                                   </td>
                                   <td className="px-4 py-3 font-bold font-mono text-zinc-900">Rs {order.billing?.total?.toFixed(2) || '0.00'}</td>
                                   <td className="px-4 py-3 text-right text-zinc-400 font-semibold">
-                                    {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(order.timestamp || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </td>
                                 </tr>
                               ))
@@ -1391,13 +1521,13 @@ export default function AdminView() {
                   {/* Top Selling Items */}
                   <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-xs flex flex-col min-h-[220px]">
                     <h3 className="text-base font-bold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Top Selling Items</h3>
-                    {(!salesData?.topItems || salesData.topItems.length === 0) ? (
+                    {(topItems.length === 0) ? (
                       <div className="flex-1 flex items-center justify-center text-zinc-400 italic text-xs">
                         No item metrics computed yet.
                       </div>
                     ) : (
                       <ul className="flex flex-col gap-3">
-                        {salesData.topItems.slice(0, 5).map((item, index) => (
+                        {topItems.map((item, index) => (
                           <li key={index} className="flex items-center justify-between gap-3 text-xs border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0">
                             <span className="flex items-center gap-2.5 min-w-0">
                               <span className="h-5 w-5 shrink-0 rounded bg-zinc-900 text-white text-[10px] font-bold flex items-center justify-center">
@@ -1440,21 +1570,21 @@ export default function AdminView() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Active Tables</span>
-                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{metrics.activeTablesCount}</span>
+                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{activeTablesCount}</span>
                         </div>
                         <div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Occupied</span>
-                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{metrics.occupiedTablesCount}</span>
+                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{occupiedTablesCount}</span>
                         </div>
                         <div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Available</span>
-                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{metrics.availableTablesCount}</span>
+                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{availableTablesCount}</span>
                         </div>
                         <div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
                             {settingsKitchenMode === 'printer_only' ? 'Active Orders' : 'Kitchen Queue'}
                           </span>
-                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{metrics.kitchenPendingCount}</span>
+                          <span className="text-lg font-bold text-zinc-900 block mt-0.5">{kitchenPendingCount}</span>
                         </div>
                       </div>
                     </div>
@@ -1465,7 +1595,7 @@ export default function AdminView() {
                       </div>
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-wider block text-zinc-400">Peak Hour</span>
-                        <span className="text-xs font-bold text-zinc-900">{getPeakOrderingHour()}</span>
+                        <span className="text-xs font-bold text-zinc-900">{getPeakHourForSelectedDate()}</span>
                       </div>
                     </div>
                   </div>
